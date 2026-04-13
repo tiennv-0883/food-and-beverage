@@ -4,25 +4,59 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  DeleteDateColumn,
+  OneToMany,
 } from 'typeorm';
+import { Address } from '../addresses/address.entity';
+import { Order } from '../orders/order.entity';
+import { Review } from '../reviews/review.entity';
+import { ProductSuggestion } from '../product-suggestions/product-suggestion.entity';
+import { Notification } from '../notifications/notification.entity';
 
 @Entity('users')
 export class User {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
 
   @Column({ unique: true })
-  email: string;
+  email!: string;
 
   @Column({ select: false })
-  password: string;
+  password!: string;
+
+  @Column({ name: 'full_name', type: 'varchar', nullable: true })
+  name!: string | null;
+
+  @Column({ type: 'varchar', default: 'USER' })
+  role!: string;
+
+  @Column({ name: 'is_active', default: false })
+  isActive!: boolean;
 
   @Column({ type: 'varchar', nullable: true })
-  name: string | null;
+  avatar!: string | null;
 
-  @CreateDateColumn()
-  createdAt: Date;
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt!: Date;
 
-  @UpdateDateColumn()
-  updatedAt: Date;
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt!: Date;
+
+  @DeleteDateColumn({ name: 'deleted_at' })
+  deletedAt!: Date | null;
+
+  @OneToMany(() => Address, (address) => address.user)
+  addresses!: Address[];
+
+  @OneToMany(() => Order, (order) => order.user)
+  orders!: Order[];
+
+  @OneToMany(() => Review, (review) => review.user)
+  reviews!: Review[];
+
+  @OneToMany(() => ProductSuggestion, (ps) => ps.user)
+  productSuggestions!: ProductSuggestion[];
+
+  @OneToMany(() => Notification, (notification) => notification.user)
+  notifications!: Notification[];
 }

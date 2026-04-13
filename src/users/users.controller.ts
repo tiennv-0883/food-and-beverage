@@ -4,7 +4,6 @@ import {
   Get,
   Param,
   Put,
-  ParseIntPipe,
   UseGuards,
   Req,
   ForbiddenException,
@@ -28,7 +27,7 @@ export class UsersController {
 
   @UseGuards(JwtAuthGuard)
   @Get(':id')
-  find(@Param('id', ParseIntPipe) id: number) {
+  find(@Param('id') id: string) {
     return this.usersService.findById(id);
   }
 
@@ -41,7 +40,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @Put(':id')
   update(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body() body: UpdateUserDto,
     @Req() req: RequestWithUser,
   ) {
