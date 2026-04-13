@@ -1,0 +1,5 @@
+{
+  "not-found": "User {{args.id}} not found",
+  "create-failed": "Failed to create user",
+  "update-failed": "Failed to update user"
+}

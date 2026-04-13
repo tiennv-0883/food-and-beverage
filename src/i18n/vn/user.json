@@ -1,0 +1,5 @@
+{
+  "not-found": "Không tìm thấy người dùng {{args.id}}",
+  "create-failed": "Tạo người dùng thất bại",
+  "update-failed": "Cập nhật người dùng thất bại"
+}
