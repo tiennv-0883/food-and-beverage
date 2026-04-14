@@ -65,7 +65,7 @@ describe('AuthService', () => {
 
   describe('signup', () => {
     it('throws ConflictException when email already exists', async () => {
-      mockUsersService.findByEmail.mockResolvedValueOnce({ id: 1 });
+      mockUsersService.findByEmail.mockResolvedValueOnce({ id: 'uuid1' });
       await expect(
         service.signup('taken@example.com', 'pass'),
       ).rejects.toBeInstanceOf(ConflictException);
@@ -74,7 +74,7 @@ describe('AuthService', () => {
     it('creates user when email is free', async () => {
       mockUsersService.findByEmail.mockResolvedValueOnce(null);
       mockUsersService.create.mockResolvedValueOnce({
-        id: 2,
+        id: 'uuid2',
         email: 'new@example.com',
       });
 
@@ -85,7 +85,7 @@ describe('AuthService', () => {
         password: 'pass',
         name: 'Tien',
       });
-      expect(result).toEqual({ id: 2, email: 'new@example.com' });
+      expect(result).toEqual({ id: 'uuid2', email: 'new@example.com' });
     });
 
     it('throws InternalServerErrorException when create fails', async () => {
@@ -111,7 +111,7 @@ describe('AuthService', () => {
     it('throws UnauthorizedException on wrong password', async () => {
       const hashed = await bcrypt.hash('correct', 10);
       mockUsersService.findByEmailWithPassword.mockResolvedValueOnce({
-        id: 1,
+        id: 'uuid1',
         email: 'user@example.com',
         password: hashed,
       });
@@ -124,7 +124,7 @@ describe('AuthService', () => {
     it('returns access_token and refresh_token on valid credentials', async () => {
       const hashed = await bcrypt.hash('correct', 10);
       mockUsersService.findByEmailWithPassword.mockResolvedValueOnce({
-        id: 1,
+        id: 'uuid1',
         email: 'user@example.com',
         password: hashed,
       });
@@ -160,7 +160,7 @@ describe('AuthService', () => {
       mockRefreshTokenRepo.findOne.mockResolvedValueOnce({
         id: 5,
         tokenHash,
-        userId: 1,
+        userId: 'uuid1',
         expiresAt: past,
       });
       mockRefreshTokenRepo.delete.mockResolvedValueOnce({});
@@ -176,11 +176,11 @@ describe('AuthService', () => {
       mockRefreshTokenRepo.findOne.mockResolvedValueOnce({
         id: 5,
         tokenHash,
-        userId: 1,
+        userId: 'uuid1',
         expiresAt: future,
       });
       mockUsersService.findByIdRaw.mockResolvedValueOnce({
-        id: 1,
+        id: 'uuid1',
         email: 'user@example.com',
       });
 
@@ -188,7 +188,7 @@ describe('AuthService', () => {
 
       expect(result).toEqual({ access_token: 'signed-token' });
       expect(mockJwtService.sign).toHaveBeenCalledWith({
-        sub: 1,
+        sub: 'uuid1',
         email: 'user@example.com',
       });
     });
@@ -198,7 +198,7 @@ describe('AuthService', () => {
       mockRefreshTokenRepo.findOne.mockResolvedValueOnce({
         id: 5,
         tokenHash,
-        userId: 99,
+        userId: 'uuid99',
         expiresAt: future,
       });
       mockUsersService.findByIdRaw.mockRejectedValueOnce(
@@ -217,7 +217,7 @@ describe('AuthService', () => {
       mockRefreshTokenRepo.findOne.mockResolvedValueOnce({
         id: 5,
         tokenHash,
-        userId: 1,
+        userId: 'uuid1',
         expiresAt: future,
       });
       mockUsersService.findByIdRaw.mockRejectedValueOnce(
@@ -244,11 +244,11 @@ describe('AuthService', () => {
       mockRefreshTokenRepo.findOne.mockResolvedValueOnce({
         id: 7,
         tokenHash: expectedHash,
-        userId: 1,
+        userId: 'uuid1',
       });
       mockRefreshTokenRepo.delete.mockResolvedValueOnce({});
 
-      const result = await service.logout(rawToken, 1);
+      const result = await service.logout(rawToken, 'uuid1');
 
       expect(mockRefreshTokenRepo.delete).toHaveBeenCalledWith(7);
       expect(result).toHaveProperty('message');
@@ -258,10 +258,10 @@ describe('AuthService', () => {
       mockRefreshTokenRepo.findOne.mockResolvedValueOnce({
         id: 7,
         tokenHash: expectedHash,
-        userId: 99,
+        userId: 'uuid99',
       });
 
-      await service.logout(rawToken, 1);
+      await service.logout(rawToken, 'uuid1');
 
       expect(mockRefreshTokenRepo.delete).not.toHaveBeenCalled();
     });
@@ -269,7 +269,7 @@ describe('AuthService', () => {
     it('silently succeeds when token is not found', async () => {
       mockRefreshTokenRepo.findOne.mockResolvedValueOnce(null);
 
-      await expect(service.logout(rawToken, 1)).resolves.toHaveProperty(
+      await expect(service.logout(rawToken, 'uuid1')).resolves.toHaveProperty(
         'message',
       );
       expect(mockRefreshTokenRepo.delete).not.toHaveBeenCalled();

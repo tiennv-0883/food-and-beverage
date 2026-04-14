@@ -5,43 +5,43 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
-} from "typeorm";
-import { User } from "../users/user.entity";
+} from 'typeorm';
+import { User } from '../users/user.entity';
 
 export enum SuggestionStatus {
-  PENDING = "PENDING",
-  APPROVED = "APPROVED",
-  REJECTED = "REJECTED",
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
 }
 
-@Entity("product_suggestions")
+@Entity('product_suggestions')
 export class ProductSuggestion {
-  @PrimaryGeneratedColumn({ type: "bigint" })
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id!: string;
 
-  @Column({ name: "user_id", type: "varchar", length: 36, nullable: true })
+  @Column({ name: 'user_id', type: 'varchar', length: 36, nullable: true })
   userId!: string | null;
 
-  @Column({ type: "varchar", nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   title!: string | null;
 
-  @Column({ type: "text", nullable: true })
+  @Column({ type: 'text', nullable: true })
   description!: string | null;
 
   @Column({
-    type: "enum",
+    type: 'enum',
     enum: SuggestionStatus,
     default: SuggestionStatus.PENDING,
   })
   status!: SuggestionStatus;
 
-  @Column({ name: "admin_note", type: "text", nullable: true })
+  @Column({ name: 'admin_note', type: 'text', nullable: true })
   adminNote!: string | null;
 
-  @CreateDateColumn({ name: "created_at" })
+  @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 
   @ManyToOne(() => User, (user) => user.productSuggestions, { nullable: true })
-  @JoinColumn({ name: "user_id" })
+  @JoinColumn({ name: 'user_id' })
   user!: User | null;
 }
