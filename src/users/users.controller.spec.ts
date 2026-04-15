@@ -13,7 +13,7 @@ describe('UsersController', () => {
     update: jest.fn(),
   };
 
-  const mockReq = (sub: number) =>
+  const mockReq = (sub: string) =>
     ({ user: { sub, email: 'a@test.com' } }) as never;
 
   beforeEach(async () => {
@@ -41,20 +41,16 @@ describe('UsersController', () => {
       const profile = { id: 1, email: 'a@test.com', name: 'Tien' };
       mockUsersService.findById.mockResolvedValueOnce(profile);
 
-      const result = await controller.getProfile(mockReq(1));
+      const result = await controller.getProfile(mockReq('uuid1'));
 
-      expect(mockUsersService.findById).toHaveBeenCalledWith(1);
+      expect(mockUsersService.findById).toHaveBeenCalledWith('uuid1');
       expect(result).toEqual(profile);
     });
 
     it('is protected by JwtAuthGuard', () => {
-      const method = Object.getOwnPropertyDescriptor(
-        UsersController.prototype,
-        'getProfile',
-      )?.value as object;
       const guards = Reflect.getMetadata(
         '__guards__',
-        method,
+        UsersController,
       ) as (new () => unknown)[];
       expect(guards).toContain(JwtAuthGuard);
     });
@@ -67,16 +63,16 @@ describe('UsersController', () => {
       const user = { id: 2, email: 'b@test.com', name: null };
       mockUsersService.findById.mockResolvedValueOnce(user);
 
-      const result = await controller.find(2);
+      const result = await controller.find('uuid2');
 
-      expect(mockUsersService.findById).toHaveBeenCalledWith(2);
+      expect(mockUsersService.findById).toHaveBeenCalledWith('uuid2');
       expect(result).toEqual(user);
     });
 
     it('propagates NotFoundException when user does not exist', async () => {
       mockUsersService.findById.mockRejectedValueOnce(new NotFoundException());
 
-      await expect(controller.find(99)).rejects.toBeInstanceOf(
+      await expect(controller.find('uuid99')).rejects.toBeInstanceOf(
         NotFoundException,
       );
     });
@@ -103,16 +99,16 @@ describe('UsersController', () => {
 
   describe('update', () => {
     it('updates the user when the requester owns the resource', async () => {
-      const updated = { id: 1, email: 'a@test.com', name: 'New Name' };
+      const updated = { id: 'uuid1', email: 'a@test.com', name: 'New Name' };
       mockUsersService.update.mockResolvedValueOnce(updated);
 
       const result = await controller.update(
-        1,
+        'uuid1',
         { name: 'New Name' },
-        mockReq(1),
+        mockReq('uuid1'),
       );
 
-      expect(mockUsersService.update).toHaveBeenCalledWith(1, {
+      expect(mockUsersService.update).toHaveBeenCalledWith('uuid1', {
         name: 'New Name',
       });
       expect(result).toEqual(updated);
@@ -120,20 +116,16 @@ describe('UsersController', () => {
 
     it('throws ForbiddenException when the requester does not own the resource', () => {
       expect(() =>
-        controller.update(2, { name: 'Hacker' }, mockReq(1)),
+        controller.update('uuid2', { name: 'Hacker' }, mockReq('uuid1')),
       ).toThrow(ForbiddenException);
 
       expect(mockUsersService.update).not.toHaveBeenCalled();
     });
 
     it('is protected by JwtAuthGuard', () => {
-      const method = Object.getOwnPropertyDescriptor(
-        UsersController.prototype,
-        'update',
-      )?.value as object;
       const guards = Reflect.getMetadata(
         '__guards__',
-        method,
+        UsersController,
       ) as (new () => unknown)[];
       expect(guards).toContain(JwtAuthGuard);
     });

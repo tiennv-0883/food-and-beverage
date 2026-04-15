@@ -12,6 +12,14 @@ import * as path from 'path';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { CategoriesModule } from './categories/categories.module';
+import { ProductsModule } from './products/products.module';
+import { OrdersModule } from './orders/orders.module';
+import { ReviewsModule } from './reviews/reviews.module';
+import { ProductSuggestionsModule } from './product-suggestions/product-suggestions.module';
+import { AddressesModule } from './addresses/addresses.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { AttachmentsModule } from './attachments/attachments.module';
 
 @Module({
   imports: [
@@ -46,6 +54,14 @@ import { AuthModule } from './auth/auth.module';
     }),
     UsersModule,
     AuthModule,
+    CategoriesModule,
+    ProductsModule,
+    OrdersModule,
+    ReviewsModule,
+    ProductSuggestionsModule,
+    AddressesModule,
+    NotificationsModule,
+    AttachmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

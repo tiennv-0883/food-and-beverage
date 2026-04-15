@@ -46,23 +46,23 @@ describe('UsersService', () => {
   describe('findById', () => {
     it('returns serialized user when found', async () => {
       mockUserRepository.findOne.mockResolvedValueOnce({
-        id: 1,
+        id: 'uuid1',
         email: 'a@test.com',
         name: 'Tien',
         createdAt: new Date(),
         updatedAt: new Date(),
       });
 
-      const result = await service.findById(1);
+      const result = await service.findById('uuid1');
 
-      expect(result).toMatchObject({ id: 1, email: 'a@test.com' });
+      expect(result).toMatchObject({ id: 'uuid1', email: 'a@test.com' });
       expect(result).not.toHaveProperty('password');
     });
 
     it('throws NotFoundException when user not found', async () => {
       mockUserRepository.findOne.mockResolvedValueOnce(null);
 
-      await expect(service.findById(99)).rejects.toBeInstanceOf(
+      await expect(service.findById('uuid99')).rejects.toBeInstanceOf(
         NotFoundException,
       );
     });
@@ -74,14 +74,14 @@ describe('UsersService', () => {
     it('returns serialized array of users', async () => {
       mockUserRepository.find.mockResolvedValueOnce([
         {
-          id: 1,
+          id: 'uuid1',
           email: 'a@test.com',
           name: 'A',
           createdAt: new Date(),
           updatedAt: new Date(),
         },
         {
-          id: 2,
+          id: 'uuid2',
           email: 'b@test.com',
           name: 'B',
           createdAt: new Date(),
@@ -100,7 +100,7 @@ describe('UsersService', () => {
 
   describe('create', () => {
     it('hashes the password before saving', async () => {
-      const entity = { id: 1, email: 'a@test.com', name: null };
+      const entity = { id: 'uuid1', email: 'a@test.com', name: null };
       mockUserRepository.create.mockReturnValueOnce(entity);
       mockUserRepository.save.mockResolvedValueOnce({
         ...entity,
@@ -137,17 +137,17 @@ describe('UsersService', () => {
     it('updates non-password fields without touching password', async () => {
       mockUserRepository.update.mockResolvedValue({});
       mockUserRepository.findOne.mockResolvedValueOnce({
-        id: 1,
+        id: 'uuid1',
         email: 'new@test.com',
         name: 'Tien',
         createdAt: new Date(),
         updatedAt: new Date(),
       });
 
-      await service.update(1, { name: 'Tien' });
+      await service.update('uuid1', { name: 'Tien' });
 
       expect(mockUserRepository.update).toHaveBeenCalledTimes(1);
-      expect(mockUserRepository.update).toHaveBeenCalledWith(1, {
+      expect(mockUserRepository.update).toHaveBeenCalledWith('uuid1', {
         name: 'Tien',
       });
     });
@@ -155,18 +155,18 @@ describe('UsersService', () => {
     it('hashes password separately when password is included', async () => {
       mockUserRepository.update.mockResolvedValue({});
       mockUserRepository.findOne.mockResolvedValueOnce({
-        id: 1,
+        id: 'uuid1',
         email: 'a@test.com',
         name: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
 
-      await service.update(1, { name: 'Tien', password: 'newpass' });
+      await service.update('uuid1', { name: 'Tien', password: 'newpass' });
 
       expect(mockUserRepository.update).toHaveBeenCalledTimes(1);
       const passwordCall = mockUserRepository.update.mock.calls[0] as [
-        number,
+        string,
         Partial<User>,
       ];
       expect(passwordCall[1].password).toMatch(/^\$2[ab]\$/);
@@ -176,9 +176,9 @@ describe('UsersService', () => {
     it('throws InternalServerErrorException when update fails', async () => {
       mockUserRepository.update.mockRejectedValueOnce(new Error('db error'));
 
-      await expect(service.update(1, { name: 'X' })).rejects.toBeInstanceOf(
-        InternalServerErrorException,
-      );
+      await expect(
+        service.update('uuid1', { name: 'X' }),
+      ).rejects.toBeInstanceOf(InternalServerErrorException);
     });
   });
 });

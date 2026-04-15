@@ -31,14 +31,14 @@ export class UsersService {
       .getOne();
   }
 
-  async findById(id: number, type: UserSerializerType = 'PROFILE') {
+  async findById(id: string, type: UserSerializerType = 'PROFILE') {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user)
       throw new NotFoundException(t(this.i18n, 'user.not-found', { id }));
     return new UserSerializer({ ...user }, { type }).serialize();
   }
 
-  async findByIdRaw(id: number): Promise<User> {
+  async findByIdRaw(id: string): Promise<User> {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user)
       throw new NotFoundException(t(this.i18n, 'user.not-found', { id }));
@@ -65,7 +65,7 @@ export class UsersService {
     return new UserSerializer({ ...saved }, { type: 'PROFILE' }).serialize();
   }
 
-  async update(id: number, data: Partial<User>) {
+  async update(id: string, data: Partial<User>) {
     const { password, ...safeData } = data;
 
     const payload: Partial<User> = { ...safeData };

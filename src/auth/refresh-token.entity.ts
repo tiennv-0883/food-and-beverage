@@ -16,8 +16,8 @@ export class RefreshToken {
   @Column({ unique: true })
   tokenHash: string;
 
-  @Column()
-  userId: number;
+  @Column({ type: 'varchar', length: 36 })
+  userId: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })

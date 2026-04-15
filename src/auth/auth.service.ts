@@ -27,7 +27,7 @@ export class AuthService {
 
   async logout(
     refreshToken: string,
-    userId: number,
+    userId: string,
   ): Promise<{ message: string }> {
     const hash = this.hashToken(refreshToken);
     const stored = await this.refreshTokenRepo.findOne({
@@ -112,7 +112,7 @@ export class AuthService {
     if (!isMatch) this.throwUnauthorized();
   }
 
-  private async createRefreshToken(userId: number): Promise<string> {
+  private async createRefreshToken(userId: string): Promise<string> {
     const raw = crypto.randomBytes(32).toString('hex');
     const hash = this.hashToken(raw);
     const expiresAt = new Date();

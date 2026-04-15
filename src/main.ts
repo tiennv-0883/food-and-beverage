@@ -19,6 +19,7 @@ async function bootstrap() {
       .setTitle('NestJS Demo API')
       .setDescription('Demo Nest')
       .setVersion('1.0')
+      .addBearerAuth()
       .addGlobalParameters({
         in: 'header',
         name: 'x-lang',
@@ -33,4 +34,7 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 3000);
 }
-bootstrap();
+bootstrap().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

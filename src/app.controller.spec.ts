@@ -7,7 +7,9 @@ describe('AppController', () => {
   let appController: AppController;
 
   beforeEach(async () => {
-    jest.spyOn(I18nContext, 'current').mockReturnValue({ lang: 'en' } as any);
+    jest
+      .spyOn(I18nContext, 'current')
+      .mockReturnValue({ lang: 'en' } as I18nContext<unknown>);
 
     const app: TestingModule = await Test.createTestingModule({
       controllers: [AppController],
