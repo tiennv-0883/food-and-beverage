@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { User } from '../users/user.entity';
 import { OrderItem } from './order-item.entity';
+import { OrderStatus } from './enums/order-status.enum';
 
 @Entity('orders')
 export class Order {
@@ -32,8 +33,8 @@ export class Order {
   })
   totalPrice!: number | null;
 
-  @Column({ type: 'varchar', nullable: true })
-  status!: string | null;
+  @Column({ type: 'enum', enum: OrderStatus, nullable: true })
+  status!: OrderStatus | null;
 
   @Column({ name: 'shipping_address', type: 'text', nullable: true })
   shippingAddress!: string | null;
