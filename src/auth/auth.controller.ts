@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -46,6 +47,7 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })
   @Get('verify-email')
   verifyEmail(@Query('token') token: string) {
+    if (!token) throw new BadRequestException('token is required');
     return this.authService.verifyEmail(token);
   }
 

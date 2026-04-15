@@ -16,6 +16,8 @@ export class EmailService {
     await this.emailQueue.add('send-verification', data, {
       attempts: 3,
       backoff: { type: 'exponential', delay: 5000 },
+      removeOnComplete: true,
+      removeOnFail: 1000,
     });
   }
 }

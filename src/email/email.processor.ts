@@ -2,18 +2,24 @@ import { Processor, Process } from '@nestjs/bull';
 import type { Job } from 'bull';
 import { MailerService } from '@nestjs-modules/mailer';
 import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { VerificationEmailJob } from './email.service';
 
 @Processor('email')
 export class EmailProcessor {
   private readonly logger = new Logger(EmailProcessor.name);
 
-  constructor(private mailerService: MailerService) {}
+  constructor(
+    private mailerService: MailerService,
+    private configService: ConfigService,
+  ) {}
 
   @Process('send-verification')
   async handleSendVerification(job: Job<VerificationEmailJob>): Promise<void> {
     const { to, fullName, verificationToken } = job.data;
-    const verificationUrl = `${process.env.APP_URL}/auth/verify-email?token=${verificationToken}`;
+    const appUrl =
+      this.configService.get<string>('APP_URL') ?? 'http://localhost:3000';
+    const verificationUrl = `${appUrl}/auth/verify-email?token=${encodeURIComponent(verificationToken)}`;
 
     await this.mailerService.sendMail({
       to,
