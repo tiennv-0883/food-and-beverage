@@ -23,6 +23,40 @@ export class UsersService {
     return this.userRepo.findOne({ where: { email } });
   }
 
+  findByVerificationToken(token: string) {
+    return this.userRepo.findOne({ where: { verificationToken: token } });
+  }
+
+  async verifyByToken(
+    user: User,
+  ): Promise<{ email: string; verifiedAt: Date }> {
+    await this.executeOrThrow(
+      () =>
+        this.userRepo.update(user.id, {
+          isActive: true,
+          verificationToken: null,
+          verificationTokenExpiresAt: null,
+        }),
+      t(this.i18n, 'user.update-failed'),
+    );
+    return { email: user.email, verifiedAt: new Date() };
+  }
+
+  async resetVerificationToken(
+    user: User,
+    token: string,
+    expiresAt: Date,
+  ): Promise<void> {
+    await this.executeOrThrow(
+      () =>
+        this.userRepo.update(user.id, {
+          verificationToken: token,
+          verificationTokenExpiresAt: expiresAt,
+        }),
+      t(this.i18n, 'user.update-failed'),
+    );
+  }
+
   findByEmailWithPassword(email: string) {
     return this.userRepo
       .createQueryBuilder('user')

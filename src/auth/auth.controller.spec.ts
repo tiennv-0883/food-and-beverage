@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt.guard';
@@ -8,7 +12,9 @@ describe('AuthController', () => {
   let controller: AuthController;
 
   const mockAuthService = {
-    signup: jest.fn(),
+    register: jest.fn(),
+    verifyEmail: jest.fn(),
+    resendVerification: jest.fn(),
     login: jest.fn(),
     refresh: jest.fn(),
     logout: jest.fn(),
@@ -32,33 +38,90 @@ describe('AuthController', () => {
     expect(controller).toBeDefined();
   });
 
-  // ── signup ────────────────────────────────────────────────────────────────
+  // ── register ──────────────────────────────────────────────────────────────
 
-  describe('signup', () => {
-    it('delegates to AuthService.signup with email, password, and name', async () => {
-      const created = { id: 1, email: 'a@test.com', name: 'Tien' };
-      mockAuthService.signup.mockResolvedValueOnce(created);
+  describe('register', () => {
+    it('delegates to AuthService.register with email, password, name and phone', async () => {
+      const created = {
+        message: 'Register account success',
+        data: { user: { id: '1', email: 'a@test.com', name: 'Tien' } },
+      };
+      mockAuthService.register.mockResolvedValueOnce(created);
 
-      const result = await controller.signup({
+      const result = await controller.register({
         email: 'a@test.com',
-        password: 'secret123',
+        password: 'Password123@',
         name: 'Tien',
+        phone: '0901234567',
       });
 
-      expect(mockAuthService.signup).toHaveBeenCalledWith(
+      expect(mockAuthService.register).toHaveBeenCalledWith(
         'a@test.com',
-        'secret123',
+        'Password123@',
         'Tien',
+        '0901234567',
       );
       expect(result).toEqual(created);
     });
 
     it('propagates ConflictException when email already exists', async () => {
-      mockAuthService.signup.mockRejectedValueOnce(new ConflictException());
+      mockAuthService.register.mockRejectedValueOnce(new ConflictException());
 
       await expect(
-        controller.signup({ email: 'dup@test.com', password: 'secret123' }),
+        controller.register({
+          email: 'dup@test.com',
+          password: 'Password123@',
+          name: 'Tien',
+          phone: '0901234567',
+        }),
       ).rejects.toBeInstanceOf(ConflictException);
+    });
+  });
+
+  // ── verifyEmail ───────────────────────────────────────────────────────────
+
+  describe('verifyEmail', () => {
+    it('delegates to AuthService.verifyEmail with token', async () => {
+      const response = {
+        message: 'Email verified successfully. You can now login.',
+        data: { email: 'a@test.com', verifiedAt: new Date() },
+      };
+      mockAuthService.verifyEmail.mockResolvedValueOnce(response);
+
+      const result = await controller.verifyEmail('valid-token');
+
+      expect(mockAuthService.verifyEmail).toHaveBeenCalledWith('valid-token');
+      expect(result).toEqual(response);
+    });
+
+    it('propagates BadRequestException for invalid token', async () => {
+      mockAuthService.verifyEmail.mockRejectedValueOnce(
+        new BadRequestException(),
+      );
+
+      await expect(controller.verifyEmail('bad-token')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+  });
+
+  // ── resendVerification ────────────────────────────────────────────────────
+
+  describe('resendVerification', () => {
+    it('delegates to AuthService.resendVerification with email', async () => {
+      const response = {
+        message: 'Verification email has been resent. Please check your inbox.',
+      };
+      mockAuthService.resendVerification.mockResolvedValueOnce(response);
+
+      const result = await controller.resendVerification({
+        email: 'a@test.com',
+      });
+
+      expect(mockAuthService.resendVerification).toHaveBeenCalledWith(
+        'a@test.com',
+      );
+      expect(result).toEqual(response);
     });
   });
 
@@ -116,7 +179,7 @@ describe('AuthController', () => {
   // ── logout ────────────────────────────────────────────────────────────────
 
   describe('logout', () => {
-    const mockReq = { user: { sub: 1, email: 'a@test.com' } } as never;
+    const mockReq = { user: { sub: '1', email: 'a@test.com' } } as never;
 
     it('delegates to AuthService.logout with refresh token and user id', async () => {
       mockAuthService.logout.mockResolvedValueOnce({ message: 'Logged out' });
@@ -126,7 +189,7 @@ describe('AuthController', () => {
         mockReq,
       );
 
-      expect(mockAuthService.logout).toHaveBeenCalledWith('some-rt', 1);
+      expect(mockAuthService.logout).toHaveBeenCalledWith('some-rt', '1');
       expect(result).toEqual({ message: 'Logged out' });
     });
 

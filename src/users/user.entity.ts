@@ -27,6 +27,19 @@ export class User {
   @Column({ name: 'full_name', type: 'varchar', nullable: true })
   name!: string | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  phone!: string | null;
+
+  @Column({ name: 'verification_token', type: 'varchar', nullable: true })
+  verificationToken!: string | null;
+
+  @Column({
+    name: 'verification_token_expires_at',
+    type: 'datetime',
+    nullable: true,
+  })
+  verificationTokenExpiresAt!: Date | null;
+
   @Column({ type: 'varchar', default: 'USER' })
   role!: string;
 
