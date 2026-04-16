@@ -1,9 +1,12 @@
 import {
+  BadRequestException,
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -17,6 +20,7 @@ import {
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { JwtAuthGuard } from './jwt.guard';
 import type { RequestWithUser } from './jwt.guard';
 
@@ -28,9 +32,32 @@ export class AuthController {
   @ApiOperation({ summary: 'Register a new user' })
   @ApiResponse({ status: 201, description: 'User created successfully' })
   @ApiResponse({ status: 409, description: 'Email already exists' })
-  @Post('signup')
-  signup(@Body() body: CreateUserDto) {
-    return this.authService.signup(body.email, body.password, body.name);
+  @Post('register')
+  register(@Body() body: CreateUserDto) {
+    return this.authService.register(
+      body.email,
+      body.password,
+      body.name,
+      body.phone,
+    );
+  }
+
+  @ApiOperation({ summary: 'Verify email address' })
+  @ApiResponse({ status: 200, description: 'Email verified successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired token' })
+  @Get('verify-email')
+  verifyEmail(@Query('email') email: string, @Query('token') token: string) {
+    if (!email || !token)
+      throw new BadRequestException('email and token are required');
+    return this.authService.verifyEmail(email, token);
+  }
+
+  @ApiOperation({ summary: 'Resend verification email' })
+  @ApiResponse({ status: 200, description: 'Verification email resent' })
+  @HttpCode(HttpStatus.OK)
+  @Post('resend-verification')
+  resendVerification(@Body() body: ResendVerificationDto) {
+    return this.authService.resendVerification(body.email);
   }
 
   @ApiOperation({ summary: 'Login and receive tokens' })

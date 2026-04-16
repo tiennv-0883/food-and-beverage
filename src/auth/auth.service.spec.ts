@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import {
+  BadRequestException,
   ConflictException,
   InternalServerErrorException,
   NotFoundException,
@@ -11,6 +12,7 @@ import { RefreshToken } from './refresh-token.entity';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { I18nService } from 'nestjs-i18n';
+import { EmailService } from '../email/email.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 
@@ -22,6 +24,9 @@ describe('AuthService', () => {
     findByEmailWithPassword: jest.fn(),
     findByIdRaw: jest.fn(),
     create: jest.fn(),
+    findByVerificationToken: jest.fn(),
+    verifyByToken: jest.fn(),
+    resetVerificationToken: jest.fn(),
   };
 
   const mockJwtService = {
@@ -38,6 +43,10 @@ describe('AuthService', () => {
     delete: jest.fn(),
   };
 
+  const mockEmailService = {
+    sendVerificationEmail: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -47,6 +56,7 @@ describe('AuthService', () => {
         { provide: UsersService, useValue: mockUsersService },
         { provide: JwtService, useValue: mockJwtService },
         { provide: I18nService, useValue: mockI18nService },
+        { provide: EmailService, useValue: mockEmailService },
         {
           provide: getRepositoryToken(RefreshToken),
           useValue: mockRefreshTokenRepo,
@@ -61,31 +71,47 @@ describe('AuthService', () => {
     expect(service).toBeDefined();
   });
 
-  // ── signup ────────────────────────────────────────────────────────────────
+  // ── register ──────────────────────────────────────────────────────────────
 
-  describe('signup', () => {
+  describe('register', () => {
     it('throws ConflictException when email already exists', async () => {
       mockUsersService.findByEmail.mockResolvedValueOnce({ id: 'uuid1' });
       await expect(
-        service.signup('taken@example.com', 'pass'),
+        service.register(
+          'taken@example.com',
+          'Password123@',
+          'Tien',
+          '0901234567',
+        ),
       ).rejects.toBeInstanceOf(ConflictException);
     });
 
-    it('creates user when email is free', async () => {
+    it('creates user and queues verification email when email is free', async () => {
       mockUsersService.findByEmail.mockResolvedValueOnce(null);
-      mockUsersService.create.mockResolvedValueOnce({
-        id: 'uuid2',
-        email: 'new@example.com',
-      });
+      const created = { id: 'uuid2', email: 'new@example.com', name: 'Tien' };
+      mockUsersService.create.mockResolvedValueOnce(created);
 
-      const result = await service.signup('new@example.com', 'pass', 'Tien');
+      const result = await service.register(
+        'new@example.com',
+        'Password123@',
+        'Tien',
+        '0901234567',
+      );
 
-      expect(mockUsersService.create).toHaveBeenCalledWith({
-        email: 'new@example.com',
-        password: 'pass',
-        name: 'Tien',
-      });
-      expect(result).toEqual({ id: 'uuid2', email: 'new@example.com' });
+      expect(mockUsersService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'new@example.com',
+          password: 'Password123@',
+          name: 'Tien',
+          phone: '0901234567',
+          isActive: false,
+        }),
+      );
+      expect(mockEmailService.sendVerificationEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ to: 'new@example.com', fullName: 'Tien' }),
+      );
+      expect(result).toHaveProperty('message');
+      expect(result.data.user).toEqual(created);
     });
 
     it('throws InternalServerErrorException when create fails', async () => {
@@ -93,8 +119,124 @@ describe('AuthService', () => {
       mockUsersService.create.mockRejectedValueOnce(new Error('db error'));
 
       await expect(
-        service.signup('new@example.com', 'pass'),
+        service.register(
+          'new@example.com',
+          'Password123@',
+          'Tien',
+          '0901234567',
+        ),
       ).rejects.toBeInstanceOf(InternalServerErrorException);
+    });
+
+    it('still returns success when email queue fails', async () => {
+      mockUsersService.findByEmail.mockResolvedValueOnce(null);
+      mockUsersService.create.mockResolvedValueOnce({
+        id: 'uuid2',
+        email: 'new@example.com',
+      });
+      mockEmailService.sendVerificationEmail.mockRejectedValueOnce(
+        new Error('redis down'),
+      );
+
+      await expect(
+        service.register(
+          'new@example.com',
+          'Password123@',
+          'Tien',
+          '0901234567',
+        ),
+      ).resolves.toHaveProperty('message');
+    });
+  });
+
+  // ── verifyEmail ───────────────────────────────────────────────────────────
+
+  describe('verifyEmail', () => {
+    it('throws BadRequestException when token not found', async () => {
+      mockUsersService.findByVerificationToken.mockResolvedValueOnce(null);
+
+      await expect(
+        service.verifyEmail('a@test.com', 'bad-token'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('throws BadRequestException when token is expired', async () => {
+      mockUsersService.findByVerificationToken.mockResolvedValueOnce({
+        id: 'uuid1',
+        email: 'a@test.com',
+        verificationTokenExpiresAt: new Date(Date.now() - 1000),
+      });
+
+      await expect(
+        service.verifyEmail('a@test.com', 'expired-token'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('returns email and verifiedAt on valid token', async () => {
+      const future = new Date(Date.now() + 60_000);
+      mockUsersService.findByVerificationToken.mockResolvedValueOnce({
+        id: 'uuid1',
+        email: 'a@test.com',
+        verificationTokenExpiresAt: future,
+      });
+      mockUsersService.verifyByToken.mockResolvedValueOnce({
+        email: 'a@test.com',
+        verifiedAt: new Date(),
+      });
+
+      const result = await service.verifyEmail('a@test.com', 'valid-token');
+
+      expect(result).toHaveProperty('message');
+      expect(result.data).toHaveProperty('email', 'a@test.com');
+      expect(result.data).toHaveProperty('verifiedAt');
+    });
+  });
+
+  // ── resendVerification ────────────────────────────────────────────────────
+
+  describe('resendVerification', () => {
+    it('returns generic message when email not found (avoid enumeration)', async () => {
+      mockUsersService.findByEmail.mockResolvedValueOnce(null);
+
+      const result = await service.resendVerification('ghost@test.com');
+
+      expect(result).toHaveProperty('message');
+      expect(mockEmailService.sendVerificationEmail).not.toHaveBeenCalled();
+    });
+
+    it('returns generic message when user is already active', async () => {
+      mockUsersService.findByEmail.mockResolvedValueOnce({
+        id: 'uuid1',
+        email: 'a@test.com',
+        isActive: true,
+      });
+
+      const result = await service.resendVerification('a@test.com');
+
+      expect(result).toHaveProperty('message');
+      expect(mockEmailService.sendVerificationEmail).not.toHaveBeenCalled();
+    });
+
+    it('resets token and queues email for inactive user', async () => {
+      mockUsersService.findByEmail.mockResolvedValueOnce({
+        id: 'uuid1',
+        email: 'a@test.com',
+        name: 'Tien',
+        isActive: false,
+      });
+      mockUsersService.resetVerificationToken.mockResolvedValueOnce(undefined);
+
+      const result = await service.resendVerification('a@test.com');
+
+      expect(mockUsersService.resetVerificationToken).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'uuid1' }),
+        expect.any(String),
+        expect.any(Date),
+      );
+      expect(mockEmailService.sendVerificationEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ to: 'a@test.com', fullName: 'Tien' }),
+      );
+      expect(result).toHaveProperty('message');
     });
   });
 

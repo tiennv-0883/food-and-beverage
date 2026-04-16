@@ -1,7 +1,7 @@
 export type UserSerializerType = 'BASIC_INFO' | 'PROFILE';
 
 const USER_FIELDS: Record<UserSerializerType, string[]> = {
-  BASIC_INFO: ['id', 'email', 'name', 'role', 'isActive', 'avatar'],
+  BASIC_INFO: ['id', 'email', 'name', 'role', 'isActive', 'avatar', 'phone'],
   PROFILE: [
     'id',
     'email',
@@ -9,6 +9,7 @@ const USER_FIELDS: Record<UserSerializerType, string[]> = {
     'role',
     'isActive',
     'avatar',
+    'phone',
     'createdAt',
     'updatedAt',
   ],
