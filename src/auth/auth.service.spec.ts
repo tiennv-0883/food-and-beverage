@@ -155,9 +155,9 @@ describe('AuthService', () => {
     it('throws BadRequestException when token not found', async () => {
       mockUsersService.findByVerificationToken.mockResolvedValueOnce(null);
 
-      await expect(service.verifyEmail('bad-token')).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
+      await expect(
+        service.verifyEmail('a@test.com', 'bad-token'),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('throws BadRequestException when token is expired', async () => {
@@ -167,9 +167,9 @@ describe('AuthService', () => {
         verificationTokenExpiresAt: new Date(Date.now() - 1000),
       });
 
-      await expect(service.verifyEmail('expired-token')).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
+      await expect(
+        service.verifyEmail('a@test.com', 'expired-token'),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('returns email and verifiedAt on valid token', async () => {
@@ -184,7 +184,7 @@ describe('AuthService', () => {
         verifiedAt: new Date(),
       });
 
-      const result = await service.verifyEmail('valid-token');
+      const result = await service.verifyEmail('a@test.com', 'valid-token');
 
       expect(result).toHaveProperty('message');
       expect(result.data).toHaveProperty('email', 'a@test.com');

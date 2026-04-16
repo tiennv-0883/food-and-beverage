@@ -81,16 +81,19 @@ describe('AuthController', () => {
   // ── verifyEmail ───────────────────────────────────────────────────────────
 
   describe('verifyEmail', () => {
-    it('delegates to AuthService.verifyEmail with token', async () => {
+    it('delegates to AuthService.verifyEmail with email and token', async () => {
       const response = {
         message: 'Email verified successfully. You can now login.',
         data: { email: 'a@test.com', verifiedAt: new Date() },
       };
       mockAuthService.verifyEmail.mockResolvedValueOnce(response);
 
-      const result = await controller.verifyEmail('valid-token');
+      const result = await controller.verifyEmail('a@test.com', 'valid-token');
 
-      expect(mockAuthService.verifyEmail).toHaveBeenCalledWith('valid-token');
+      expect(mockAuthService.verifyEmail).toHaveBeenCalledWith(
+        'a@test.com',
+        'valid-token',
+      );
       expect(result).toEqual(response);
     });
 
@@ -99,9 +102,9 @@ describe('AuthController', () => {
         new BadRequestException(),
       );
 
-      await expect(controller.verifyEmail('bad-token')).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
+      await expect(
+        controller.verifyEmail('a@test.com', 'bad-token'),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 

@@ -46,9 +46,10 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Email verified successfully' })
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })
   @Get('verify-email')
-  verifyEmail(@Query('token') token: string) {
-    if (!token) throw new BadRequestException('token is required');
-    return this.authService.verifyEmail(token);
+  verifyEmail(@Query('email') email: string, @Query('token') token: string) {
+    if (!email || !token)
+      throw new BadRequestException('email and token are required');
+    return this.authService.verifyEmail(email, token);
   }
 
   @ApiOperation({ summary: 'Resend verification email' })

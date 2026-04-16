@@ -4,6 +4,7 @@ import { MailerService } from '@nestjs-modules/mailer';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { VerificationEmailJob } from './email.service';
+import { VERIFICATION_TOKEN_TTL_MINUTES } from '../shared/util';
 
 @Processor('email')
 export class EmailProcessor {
@@ -19,7 +20,7 @@ export class EmailProcessor {
     const { to, fullName, verificationToken } = job.data;
     const appUrl =
       this.configService.get<string>('APP_URL') ?? 'http://localhost:3000';
-    const verificationUrl = `${appUrl}/auth/verify-email?token=${encodeURIComponent(verificationToken)}`;
+    const verificationUrl = `${appUrl}/auth/verify-email?email=${encodeURIComponent(to)}&token=${encodeURIComponent(verificationToken)}`;
 
     await this.mailerService.sendMail({
       to,
@@ -28,7 +29,7 @@ export class EmailProcessor {
         <h2>Hello ${fullName},</h2>
         <p>Thank you for registering. Please verify your email by clicking the link below:</p>
         <a href="${verificationUrl}">${verificationUrl}</a>
-        <p>This link will expire in 3 minutes.</p>
+        <p>This link will expire in ${VERIFICATION_TOKEN_TTL_MINUTES} minutes.</p>
       `,
     });
 

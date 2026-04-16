@@ -14,7 +14,7 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { JwtService } from '@nestjs/jwt';
 import { I18nService } from 'nestjs-i18n';
-import { t } from '../shared/util';
+import { t, makeVerificationTokenExpiresAt } from '../shared/util';
 import { RefreshToken } from './refresh-token.entity';
 import { EmailService } from '../email/email.service';
 
@@ -49,7 +49,7 @@ export class AuthService {
     await this.checkUserExistingAndThrow(email);
 
     const verificationToken = crypto.randomBytes(32).toString('hex');
-    const verificationTokenExpiresAt = new Date(Date.now() + 3 * 60 * 1000); // 3 minutes
+    const verificationTokenExpiresAt: Date = makeVerificationTokenExpiresAt();
 
     let user: Record<string, unknown>;
     try {
@@ -122,9 +122,10 @@ export class AuthService {
   }
 
   async verifyEmail(
+    email: string,
     token: string,
   ): Promise<{ message: string; data: { email: string; verifiedAt: Date } }> {
-    const user = await this.usersService.findByVerificationToken(token);
+    const user = await this.usersService.findByVerificationToken(email, token);
     if (!user) {
       throw new BadRequestException(
         t(this.i18n, 'auth.invalid-verification-token'),
@@ -150,7 +151,7 @@ export class AuthService {
     }
 
     const verificationToken = crypto.randomBytes(32).toString('hex');
-    const verificationTokenExpiresAt = new Date(Date.now() + 3 * 60 * 1000);
+    const verificationTokenExpiresAt: Date = makeVerificationTokenExpiresAt();
 
     await this.usersService.resetVerificationToken(
       user,

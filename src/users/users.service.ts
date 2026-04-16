@@ -23,8 +23,10 @@ export class UsersService {
     return this.userRepo.findOne({ where: { email } });
   }
 
-  findByVerificationToken(token: string) {
-    return this.userRepo.findOne({ where: { verificationToken: token } });
+  findByVerificationToken(email: string, token: string) {
+    return this.userRepo.findOne({
+      where: { email, verificationToken: token },
+    });
   }
 
   async verifyByToken(
