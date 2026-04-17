@@ -2640,6 +2640,11 @@ commander@^10.0.0:
   resolved "https://registry.npmjs.org/commander/-/commander-10.0.1.tgz"
   integrity sha512-y4Mg2tXshplEbSGzx7amzPwKKOCGuoSRP/CjEdwwk0FOGlUbq6lKuoyDZTNZkmxHdJtp54hdfY/JUrdL7Xfdug==
 
+"commander@^11.0.0 || ^12.0.0 || ^13.0.0":
+  version "13.1.0"
+  resolved "https://registry.yarnpkg.com/commander/-/commander-13.1.0.tgz#776167db68c78f38dcce1f9b8d7b8b9a488abf46"
+  integrity sha512-/rFeCpNJQbhSZjGVwO9RFV3xPqbnERS8MmIQzCtD/zl6gpJuV/bMLuN92oG3F7d8oDEHHRrujSXNUr8fpjntKw==
+
 commander@^11.1.0:
   version "11.1.0"
   resolved "https://registry.npmjs.org/commander/-/commander-11.1.0.tgz"
@@ -5510,6 +5515,13 @@ neo-async@^2.6.2:
   version "2.6.2"
   resolved "https://registry.npmjs.org/neo-async/-/neo-async-2.6.2.tgz"
   integrity sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==
+
+nestjs-console@^10.0.0:
+  version "10.0.0"
+  resolved "https://registry.yarnpkg.com/nestjs-console/-/nestjs-console-10.0.0.tgz#ce91d5c603badbb13abcbed414c39a6dc92c9987"
+  integrity sha512-LlUzseDtbUoPUkM+/83NE00BytX29CyWpb4NbH57f7p1+DGA1Yb5OA9WaIZmy/uKM7Yjqb6HQeWRXUlvkkcQnw==
+  dependencies:
+    commander "^11.0.0 || ^12.0.0 || ^13.0.0"
 
 nestjs-i18n@^10.6.0:
   version "10.6.0"

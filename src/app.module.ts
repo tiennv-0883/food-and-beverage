@@ -24,6 +24,8 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { AttachmentsModule } from './attachments/attachments.module';
 import { JwtAuthGuard } from './auth/guards/jwt.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
+import { ConsoleModule } from 'nestjs-console/dist/module';
+import { SeedsModule } from './database/seeds/seeds.module';
 
 @Module({
   imports: [
@@ -75,6 +77,8 @@ import { RolesGuard } from './auth/guards/roles.guard';
     AddressesModule,
     NotificationsModule,
     AttachmentsModule,
+    ConsoleModule,
+    SeedsModule,
   ],
   controllers: [AppController],
   providers: [
