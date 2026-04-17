@@ -5,9 +5,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UsersModule } from '../users/users.module';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
-import { JwtAuthGuard } from './jwt.guard';
 import { RefreshToken } from './refresh-token.entity';
 import { EmailModule } from '../email/email.module';
+import { JwtAuthGuard } from './guards/jwt.guard';
+import { RolesGuard } from './guards/roles.guard';
 
 @Module({
   imports: [
@@ -28,8 +29,8 @@ import { EmailModule } from '../email/email.module';
       },
     }),
   ],
-  providers: [AuthService, JwtAuthGuard],
+  providers: [AuthService, JwtAuthGuard, RolesGuard],
   controllers: [AuthController],
-  exports: [JwtAuthGuard, JwtModule, AuthService],
+  exports: [JwtModule, AuthService, JwtAuthGuard, RolesGuard],
 })
 export class AuthModule {}

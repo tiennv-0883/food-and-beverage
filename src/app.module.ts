@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import {
   I18nModule,
   AcceptLanguageResolver,
@@ -21,6 +22,10 @@ import { ProductSuggestionsModule } from './product-suggestions/product-suggesti
 import { AddressesModule } from './addresses/addresses.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AttachmentsModule } from './attachments/attachments.module';
+import { JwtAuthGuard } from './auth/guards/jwt.guard';
+import { RolesGuard } from './auth/guards/roles.guard';
+import { ConsoleModule } from 'nestjs-console/dist/module';
+import { SeedsModule } from './database/seeds/seeds.module';
 
 @Module({
   imports: [
@@ -72,8 +77,14 @@ import { AttachmentsModule } from './attachments/attachments.module';
     AddressesModule,
     NotificationsModule,
     AttachmentsModule,
+    ConsoleModule,
+    SeedsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useExisting: JwtAuthGuard },
+    { provide: APP_GUARD, useExisting: RolesGuard },
+  ],
 })
 export class AppModule {}

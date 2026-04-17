@@ -88,7 +88,7 @@ export class AuthService {
     const user = await this.findUserOrThrow(email);
     await this.checkPasswordOrThrow(password, user.password);
 
-    const payload = { sub: user.id, email: user.email };
+    const payload = { sub: user.id, email: user.email, role: user.role };
     const access_token = this.jwtService.sign(payload);
     const refresh_token = await this.createRefreshToken(user.id);
     return { access_token, refresh_token };
@@ -117,6 +117,7 @@ export class AuthService {
     const access_token = this.jwtService.sign({
       sub: user.id,
       email: user.email,
+      role: user.role,
     });
     return { access_token };
   }
