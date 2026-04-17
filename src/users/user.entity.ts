@@ -12,6 +12,7 @@ import { Order } from '../orders/order.entity';
 import { Review } from '../reviews/review.entity';
 import { ProductSuggestion } from '../product-suggestions/product-suggestion.entity';
 import { Notification } from '../notifications/notification.entity';
+import { Role } from '../auth/enums/role.enum';
 
 @Entity('users')
 export class User {
@@ -40,8 +41,8 @@ export class User {
   })
   verificationTokenExpiresAt!: Date | null;
 
-  @Column({ type: 'varchar', default: 'USER' })
-  role!: string;
+  @Column({ type: 'enum', enum: Role, default: Role.USER })
+  role!: Role;
 
   @Column({ name: 'is_active', default: false })
   isActive!: boolean;

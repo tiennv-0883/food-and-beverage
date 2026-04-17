@@ -8,7 +8,6 @@ import {
   Post,
   Query,
   Req,
-  UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
@@ -21,14 +20,15 @@ import { CreateUserDto } from '../users/dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
-import { JwtAuthGuard } from './jwt.guard';
-import type { RequestWithUser } from './jwt.guard';
+import type { RequestWithUser } from './guards/jwt.guard';
+import { Public } from './decorators/public.decorator';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+  @Public()
   @ApiOperation({ summary: 'Register a new user' })
   @ApiResponse({ status: 201, description: 'User created successfully' })
   @ApiResponse({ status: 409, description: 'Email already exists' })
@@ -42,6 +42,7 @@ export class AuthController {
     );
   }
 
+  @Public()
   @ApiOperation({ summary: 'Verify email address' })
   @ApiResponse({ status: 200, description: 'Email verified successfully' })
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })
@@ -52,6 +53,7 @@ export class AuthController {
     return this.authService.verifyEmail(email, token);
   }
 
+  @Public()
   @ApiOperation({ summary: 'Resend verification email' })
   @ApiResponse({ status: 200, description: 'Verification email resent' })
   @HttpCode(HttpStatus.OK)
@@ -60,6 +62,7 @@ export class AuthController {
     return this.authService.resendVerification(body.email);
   }
 
+  @Public()
   @ApiOperation({ summary: 'Login and receive tokens' })
   @ApiResponse({
     status: 200,
@@ -75,6 +78,7 @@ export class AuthController {
     return this.authService.login(body.email, body.password);
   }
 
+  @Public()
   @ApiOperation({ summary: 'Refresh access token' })
   @ApiResponse({ status: 200, description: 'Returns new access_token' })
   @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
@@ -84,8 +88,8 @@ export class AuthController {
     return this.authService.refresh(body.refresh_token);
   }
 
-  @ApiOperation({ summary: 'Logout and revoke refresh token' })
   @ApiBearerAuth()
+  @ApiOperation({ summary: 'Logout and revoke refresh token' })
   @ApiResponse({
     status: 200,
     description: 'Logged out successfully',
@@ -93,7 +97,6 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard)
   @Post('logout')
   logout(@Body() body: RefreshDto, @Req() req: RequestWithUser) {
     return this.authService.logout(body.refresh_token, req.user.sub);

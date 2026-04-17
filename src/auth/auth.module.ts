@@ -5,7 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UsersModule } from '../users/users.module';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
-import { JwtAuthGuard } from './jwt.guard';
+import { JwtAuthGuard } from './guards/jwt.guard';
 import { RefreshToken } from './refresh-token.entity';
 import { EmailModule } from '../email/email.module';
 
