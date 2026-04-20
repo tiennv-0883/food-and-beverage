@@ -7,6 +7,7 @@ import {
   FeaturedProductsQueryDto,
   Timeframe,
 } from './dto/featured-products-query.dto';
+import { ProductSerializer } from './product.serializer';
 
 const LABELS: Record<Timeframe, string> = {
   [Timeframe.DAY]: 'Món ngon hôm nay',
@@ -68,16 +69,8 @@ export class ProductsService {
       .limit(limit)
       .getRawMany();
 
-    const data = rows.map((r) => ({
-      id: r.id,
-      name: r.name,
-      slug: r.slug,
-      price: r.price !== null ? parseFloat(r.price) : null,
-      thumbnail: r.thumbnail,
-      averageRating: r.averageRating !== null ? parseFloat(r.averageRating) : 0,
-      categoryName: r.categoryName ?? null,
-      totalSold: r.totalSold !== null ? parseInt(r.totalSold, 10) : 0,
-    }));
+    const serializer = new ProductSerializer();
+    const data = rows.map((r: Record<string, any>) => serializer.serialize(r));
 
     return { timeframe, since, label: LABELS[timeframe], data };
   }
