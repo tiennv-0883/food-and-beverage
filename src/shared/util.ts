@@ -1,3 +1,4 @@
+import { InternalServerErrorException } from '@nestjs/common';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 
 export const VERIFICATION_TOKEN_TTL_MINUTES: number =
@@ -8,6 +9,17 @@ export const VERIFICATION_TOKEN_TTL_MS: number =
 
 export function makeVerificationTokenExpiresAt(): Date {
   return new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS);
+}
+
+export async function executeOrThrow<T>(
+  fn: () => Promise<T>,
+  errorMessage: string,
+): Promise<T> {
+  try {
+    return await fn();
+  } catch {
+    throw new InternalServerErrorException(errorMessage);
+  }
 }
 
 export function t(

@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  InternalServerErrorException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { I18nService } from 'nestjs-i18n';
@@ -18,7 +14,7 @@ import {
 } from './dto/search-products-query.dto';
 import { Product } from './product.entity';
 import { ProductSerializer } from './product.serializer';
-import { t } from '../shared/util';
+import { executeOrThrow, t } from '../shared/util';
 
 const LABELS: Record<Timeframe, string> = {
   [Timeframe.DAY]: 'Món ngon hôm nay',
@@ -56,7 +52,7 @@ export class ProductsService {
     const limit = query.limit ?? 10;
     const since = getSinceDate(timeframe);
 
-    const rows = await this.executeOrThrow(
+    const rows = await executeOrThrow(
       () =>
         this.orderItemRepo
           .createQueryBuilder('oi')
@@ -141,7 +137,7 @@ export class ProductsService {
         qb.orderBy('p.createdAt', 'DESC');
     }
 
-    const [items, total] = await this.executeOrThrow(
+    const [items, total] = await executeOrThrow(
       () =>
         qb
           .skip((page - 1) * limit)
@@ -162,7 +158,7 @@ export class ProductsService {
   }
 
   async findOne(id: string) {
-    const product = await this.executeOrThrow(
+    const product = await executeOrThrow(
       () =>
         this.productRepo.findOne({ where: { id }, relations: ['category'] }),
       t(this.i18n, 'product.fetch-failed'),
@@ -173,16 +169,5 @@ export class ProductsService {
     }
 
     return ProductSerializer.serializeDetail(product);
-  }
-
-  private async executeOrThrow<T>(
-    fn: () => Promise<T>,
-    errorMessage: string,
-  ): Promise<T> {
-    try {
-      return await fn();
-    } catch {
-      throw new InternalServerErrorException(errorMessage);
-    }
   }
 }
