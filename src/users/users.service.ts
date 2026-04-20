@@ -1,14 +1,10 @@
-import {
-  Injectable,
-  InternalServerErrorException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { I18nService } from 'nestjs-i18n';
 import * as bcrypt from 'bcrypt';
 import { User } from './user.entity';
-import { t } from '../shared/util';
+import { executeOrThrow, t } from '../shared/util';
 import { UserSerializer, UserSerializerType } from './user.serializer';
 
 @Injectable()
@@ -32,7 +28,7 @@ export class UsersService {
   async verifyByToken(
     user: User,
   ): Promise<{ email: string; verifiedAt: Date }> {
-    await this.executeOrThrow(
+    await executeOrThrow(
       () =>
         this.userRepo.update(user.id, {
           isActive: true,
@@ -49,7 +45,7 @@ export class UsersService {
     token: string,
     expiresAt: Date,
   ): Promise<void> {
-    await this.executeOrThrow(
+    await executeOrThrow(
       () =>
         this.userRepo.update(user.id, {
           verificationToken: token,
@@ -94,7 +90,7 @@ export class UsersService {
       data = { ...data, password: await bcrypt.hash(data.password, 10) };
     }
     const user = this.userRepo.create(data);
-    const saved = await this.executeOrThrow(
+    const saved = await executeOrThrow(
       () => this.userRepo.save(user),
       t(this.i18n, 'user.create-failed'),
     );
@@ -110,23 +106,12 @@ export class UsersService {
     }
 
     if (Object.keys(payload).length > 0) {
-      await this.executeOrThrow(
+      await executeOrThrow(
         () => this.userRepo.update(id, payload),
         t(this.i18n, 'user.update-failed'),
       );
     }
 
     return this.findById(id);
-  }
-
-  private async executeOrThrow<T>(
-    fn: () => Promise<T>,
-    errorMessage: string,
-  ): Promise<T> {
-    try {
-      return await fn();
-    } catch {
-      throw new InternalServerErrorException(errorMessage);
-    }
   }
 }

@@ -1,0 +1,4 @@
+{
+  "not-found": "Không tìm thấy sản phẩm #{{args.id}}",
+  "fetch-failed": "Lấy danh sách sản phẩm thất bại"
+}
