@@ -1,0 +1,4 @@
+{
+  "not-found": "Product #{{args.id}} not found",
+  "fetch-failed": "Failed to fetch products"
+}
