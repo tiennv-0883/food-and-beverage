@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { OrderItem } from '../orders/order-item.entity';
@@ -7,6 +7,11 @@ import {
   FeaturedProductsQueryDto,
   Timeframe,
 } from './dto/featured-products-query.dto';
+import {
+  SearchProductsQueryDto,
+  ProductSort,
+} from './dto/search-products-query.dto';
+import { Product } from './product.entity';
 import { ProductSerializer } from './product.serializer';
 
 const LABELS: Record<Timeframe, string> = {
@@ -35,6 +40,8 @@ export class ProductsService {
   constructor(
     @InjectRepository(OrderItem)
     private readonly orderItemRepo: Repository<OrderItem>,
+    @InjectRepository(Product)
+    private readonly productRepo: Repository<Product>,
   ) {}
 
   async getFeatured(query: FeaturedProductsQueryDto) {
@@ -73,5 +80,82 @@ export class ProductsService {
     const data = rows.map((r: Record<string, any>) => serializer.serialize(r));
 
     return { timeframe, since, label: LABELS[timeframe], data };
+  }
+
+  async search(query: SearchProductsQueryDto) {
+    const {
+      search,
+      categoryId,
+      minPrice,
+      maxPrice,
+      sort = ProductSort.NEWEST,
+      page = 1,
+      limit = 10,
+    } = query;
+
+    const qb = this.productRepo
+      .createQueryBuilder('p')
+      .leftJoinAndSelect('p.category', 'c')
+      .where('p.deleted_at IS NULL');
+
+    if (search) {
+      qb.andWhere('(p.name LIKE :kw OR p.description LIKE :kw)', {
+        kw: `%${search}%`,
+      });
+    }
+
+    if (categoryId) {
+      qb.andWhere('p.categoryId = :categoryId', { categoryId });
+    }
+
+    if (minPrice !== undefined) {
+      qb.andWhere('p.price >= :minPrice', { minPrice });
+    }
+
+    if (maxPrice !== undefined) {
+      qb.andWhere('p.price <= :maxPrice', { maxPrice });
+    }
+
+    switch (sort) {
+      case ProductSort.PRICE_ASC:
+        qb.orderBy('p.price', 'ASC');
+        break;
+      case ProductSort.PRICE_DESC:
+        qb.orderBy('p.price', 'DESC');
+        break;
+      case ProductSort.RATING:
+        qb.orderBy('p.averageRating', 'DESC');
+        break;
+      default:
+        qb.orderBy('p.createdAt', 'DESC');
+    }
+
+    const [items, total] = await qb
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data: items.map((p) => ProductSerializer.serializeList(p)),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async findOne(id: string) {
+    const product = await this.productRepo.findOne({
+      where: { id },
+      relations: ['category'],
+    });
+
+    if (!product) {
+      throw new NotFoundException(`Product #${id} not found`);
+    }
+
+    return ProductSerializer.serializeDetail(product);
   }
 }

@@ -1,4 +1,42 @@
+import { Product } from './product.entity';
+
 export class ProductSerializer {
+  static serializeList(product: Product): Record<string, unknown> {
+    return {
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      price: product.price,
+      thumbnail: product.thumbnail,
+      averageRating: product.averageRating,
+      stockQuantity: product.stockQuantity,
+      categoryId: product.categoryId,
+      categoryName: product.category?.name ?? null,
+    };
+  }
+
+  static serializeDetail(product: Product): Record<string, unknown> {
+    return {
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      price: product.price,
+      description: product.description,
+      thumbnail: product.thumbnail,
+      averageRating: product.averageRating,
+      stockQuantity: product.stockQuantity,
+      status: product.status,
+      createdAt: product.createdAt,
+      category: product.category
+        ? {
+            id: product.category.id,
+            name: product.category.name,
+            slug: product.category.slug,
+          }
+        : null,
+    };
+  }
+
   price(raw: string | null): number | null {
     return raw !== null ? parseFloat(raw) : null;
   }
