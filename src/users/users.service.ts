@@ -4,11 +4,12 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { I18nService } from 'nestjs-i18n';
 import * as bcrypt from 'bcrypt';
+import * as fs from 'fs';
 import { User } from './user.entity';
-import { executeOrThrow, t } from '../shared/util';
+import { executeOrThrow, t, withTransaction } from '../shared/util';
 import { UserSerializer, UserSerializerType } from './user.serializer';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -22,6 +23,7 @@ export class UsersService {
     private userRepo: Repository<User>,
     private i18n: I18nService,
     private readonly attachmentsService: AttachmentsService,
+    private readonly dataSource: DataSource,
   ) {}
 
   findByEmail(email: string) {
@@ -137,33 +139,49 @@ export class UsersService {
     dto: UpdateProfileDto,
     file?: Express.Multer.File,
   ): Promise<Record<string, unknown>> {
+    const userUpdate: Partial<Pick<User, 'name' | 'phone' | 'avatar'>> = {};
+    if (dto.name !== undefined) userUpdate.name = dto.name;
+    if (dto.phone !== undefined) userUpdate.phone = dto.phone;
+
     if (file) {
       const old = await this.attachmentsService.findByAttachable(
         AttachableType.USER,
         id,
       );
-      const att = await executeOrThrow(
-        () =>
-          this.attachmentsService.createForEntity(
-            file,
-            AttachableType.USER,
-            id,
-          ),
-        t(this.i18n, 'user.avatar-update-failed'),
-      );
-      await executeOrThrow(
-        () => this.userRepo.update(id, { avatar: att.fileId }),
-        t(this.i18n, 'user.avatar-update-failed'),
-      );
-      if (old) await this.attachmentsService.removeById(old.id);
-    }
 
-    const update: Partial<Pick<User, 'name' | 'phone'>> = {};
-    if (dto.name !== undefined) update.name = dto.name;
-    if (dto.phone !== undefined) update.phone = dto.phone;
-    if (Object.keys(update).length > 0) {
+      const attachment = this.attachmentsService.prepareAttachment(
+        file,
+        AttachableType.USER,
+        id,
+      );
+
+      await withTransaction(
+        this.dataSource,
+        async (manager) => {
+          const att = await this.attachmentsService.saveAttachment(
+            attachment,
+            manager,
+          );
+          await executeOrThrow(
+            () =>
+              manager.update(User, id, { ...userUpdate, avatar: att.fileId }),
+            t(this.i18n, 'user.avatar-update-failed'),
+          );
+        },
+        {
+          afterRollback: () => {
+            if (attachment.path && fs.existsSync(attachment.path)) {
+              fs.unlinkSync(attachment.path);
+            }
+          },
+          afterCommit: async () => {
+            if (old) await this.attachmentsService.removeById(old.id);
+          },
+        },
+      );
+    } else if (Object.keys(userUpdate).length > 0) {
       await executeOrThrow(
-        () => this.userRepo.update(id, update),
+        () => this.userRepo.update(id, userUpdate),
         t(this.i18n, 'user.update-failed'),
       );
     }

@@ -1,5 +1,6 @@
 import { InternalServerErrorException } from '@nestjs/common';
 import { I18nContext, I18nService } from 'nestjs-i18n';
+import { DataSource, EntityManager } from 'typeorm';
 
 export const VERIFICATION_TOKEN_TTL_MINUTES: number =
   Number(process.env.VERIFICATION_TOKEN_TTL_MINUTES) || 3;
@@ -9,6 +10,25 @@ export const VERIFICATION_TOKEN_TTL_MS: number =
 
 export function makeVerificationTokenExpiresAt(): Date {
   return new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS);
+}
+
+export async function withTransaction<T>(
+  dataSource: DataSource,
+  fn: (manager: EntityManager) => Promise<T>,
+  hooks?: {
+    afterRollback?: () => void | Promise<void>;
+    afterCommit?: () => void | Promise<void>;
+  },
+): Promise<T> {
+  let result: T;
+  try {
+    result = await dataSource.transaction(fn);
+  } catch (err) {
+    if (hooks?.afterRollback) await hooks.afterRollback();
+    throw err;
+  }
+  if (hooks?.afterCommit) await hooks.afterCommit();
+  return result;
 }
 
 export async function executeOrThrow<T>(

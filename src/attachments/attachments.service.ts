@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { I18nService } from 'nestjs-i18n';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -16,11 +16,11 @@ export class AttachmentsService {
     private readonly i18n: I18nService,
   ) {}
 
-  async createForEntity(
+  prepareAttachment(
     file: Express.Multer.File,
     attachableType: AttachableType,
     attachableId: string,
-  ): Promise<Attachment> {
+  ): Attachment {
     const fileId = crypto.randomUUID();
     const ext = path.extname(file.originalname).toLowerCase() || '.bin';
     const dir = path.join('uploads', attachableType.toLowerCase());
@@ -29,7 +29,7 @@ export class AttachmentsService {
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(filePath, file.buffer);
 
-    const attachment = this.attachmentRepo.create({
+    return this.attachmentRepo.create({
       fileId,
       originName: file.originalname,
       mimeType: file.mimetype,
@@ -39,11 +39,32 @@ export class AttachmentsService {
       attachableId,
       isPublic: true,
     });
+  }
 
+  saveAttachment(
+    attachment: Attachment,
+    manager?: EntityManager,
+  ): Promise<Attachment> {
+    const repo = manager
+      ? manager.getRepository(Attachment)
+      : this.attachmentRepo;
     return executeOrThrow(
-      () => this.attachmentRepo.save(attachment),
+      () => repo.save(attachment),
       t(this.i18n, 'attachment.upload-failed'),
     );
+  }
+
+  async createForEntity(
+    file: Express.Multer.File,
+    attachableType: AttachableType,
+    attachableId: string,
+  ): Promise<Attachment> {
+    const attachment = this.prepareAttachment(
+      file,
+      attachableType,
+      attachableId,
+    );
+    return this.saveAttachment(attachment);
   }
 
   async findByFileId(fileId: string): Promise<Attachment | null> {
