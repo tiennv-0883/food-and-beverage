@@ -1,5 +1,8 @@
 {
   "not-found": "Không tìm thấy người dùng {{args.id}}",
   "create-failed": "Tạo người dùng thất bại",
-  "update-failed": "Cập nhật người dùng thất bại"
+  "update-failed": "Cập nhật người dùng thất bại",
+  "invalid-password": "Mật khẩu hiện tại không đúng",
+  "password-changed": "Đổi mật khẩu thành công",
+  "avatar-update-failed": "Cập nhật ảnh đại diện thất bại"
 }
