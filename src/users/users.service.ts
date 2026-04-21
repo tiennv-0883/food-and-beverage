@@ -1,11 +1,20 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { I18nService } from 'nestjs-i18n';
 import * as bcrypt from 'bcrypt';
+import * as fs from 'fs';
 import { User } from './user.entity';
-import { executeOrThrow, t } from '../shared/util';
+import { executeOrThrow, t, withTransaction } from '../shared/util';
 import { UserSerializer, UserSerializerType } from './user.serializer';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { AttachmentsService } from '../attachments/attachments.service';
+import { AttachableType } from '../attachments/attachment.entity';
 
 @Injectable()
 export class UsersService {
@@ -13,6 +22,8 @@ export class UsersService {
     @InjectRepository(User)
     private userRepo: Repository<User>,
     private i18n: I18nService,
+    private readonly attachmentsService: AttachmentsService,
+    private readonly dataSource: DataSource,
   ) {}
 
   findByEmail(email: string) {
@@ -60,6 +71,14 @@ export class UsersService {
       .createQueryBuilder('user')
       .addSelect('user.password')
       .where('user.email = :email', { email })
+      .getOne();
+  }
+
+  private findByIdWithPassword(id: string) {
+    return this.userRepo
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.id = :id', { id })
       .getOne();
   }
 
@@ -113,5 +132,77 @@ export class UsersService {
     }
 
     return this.findById(id);
+  }
+
+  async updateProfile(
+    id: string,
+    dto: UpdateProfileDto,
+    file?: Express.Multer.File,
+  ): Promise<Record<string, unknown>> {
+    const userUpdate: Partial<Pick<User, 'name' | 'phone' | 'avatar'>> = {};
+    if (dto.name !== undefined) userUpdate.name = dto.name;
+    if (dto.phone !== undefined) userUpdate.phone = dto.phone;
+
+    if (file) {
+      const old = await this.attachmentsService.findByAttachable(
+        AttachableType.USER,
+        id,
+      );
+
+      const attachment = this.attachmentsService.prepareAttachment(
+        file,
+        AttachableType.USER,
+        id,
+      );
+
+      await withTransaction(
+        this.dataSource,
+        async (manager) => {
+          const att = await this.attachmentsService.saveAttachment(
+            attachment,
+            manager,
+          );
+          await executeOrThrow(
+            () =>
+              manager.update(User, id, { ...userUpdate, avatar: att.fileId }),
+            t(this.i18n, 'user.avatar-update-failed'),
+          );
+        },
+        {
+          afterRollback: () => {
+            if (attachment.path && fs.existsSync(attachment.path)) {
+              fs.unlinkSync(attachment.path);
+            }
+          },
+          afterCommit: async () => {
+            if (old) await this.attachmentsService.removeById(old.id);
+          },
+        },
+      );
+    } else if (Object.keys(userUpdate).length > 0) {
+      await executeOrThrow(
+        () => this.userRepo.update(id, userUpdate),
+        t(this.i18n, 'user.update-failed'),
+      );
+    }
+
+    return this.findById(id);
+  }
+
+  async changePassword(id: string, dto: ChangePasswordDto): Promise<void> {
+    const user = await this.findByIdWithPassword(id);
+    if (!user)
+      throw new NotFoundException(t(this.i18n, 'user.not-found', { id }));
+
+    const valid = await bcrypt.compare(dto.currentPassword, user.password);
+    if (!valid) {
+      throw new UnauthorizedException(t(this.i18n, 'user.invalid-password'));
+    }
+
+    const hashed = await bcrypt.hash(dto.newPassword, 10);
+    await executeOrThrow(
+      () => this.userRepo.update(id, { password: hashed }),
+      t(this.i18n, 'user.update-failed'),
+    );
   }
 }

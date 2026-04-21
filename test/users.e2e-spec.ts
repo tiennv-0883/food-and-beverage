@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
@@ -7,11 +9,13 @@ import { DataSource, Repository } from 'typeorm';
 import { UsersController } from '../src/users/users.controller';
 import { UsersService } from '../src/users/users.service';
 import { User } from '../src/users/user.entity';
+import { Attachment } from '../src/attachments/attachment.entity';
+import { AttachmentsService } from '../src/attachments/attachments.service';
 import { Role } from '../src/auth/enums/role.enum';
 
 import { createTestApp } from './helpers/create-test-app';
 import { cleanDatabase } from './helpers/test-db';
-import { createUser } from './fixtures/user.fixture';
+import { createUser, DEFAULT_PASSWORD } from './fixtures/user.fixture';
 
 describe('UsersController Integration (e2e)', () => {
   let app: INestApplication<App>;
@@ -21,9 +25,9 @@ describe('UsersController Integration (e2e)', () => {
 
   beforeAll(async () => {
     const setup = await createTestApp({
-      featureEntities: [User],
+      featureEntities: [User, Attachment],
       controllers: [UsersController],
-      providers: [UsersService],
+      providers: [UsersService, AttachmentsService],
     });
 
     app = setup.app as INestApplication<App>;
@@ -241,6 +245,154 @@ describe('UsersController Integration (e2e)', () => {
         .set('Authorization', `Bearer ${tokenFor(admin)}`)
         .send({ name: 'Admin Override' })
         .expect(403);
+    });
+  });
+
+  // ─── PUT /users/me ───────────────────────────────────────────────────────────
+
+  describe('PUT /users/me — update own profile', () => {
+    it('no token → 401', () => {
+      return request(app.getHttpServer()).put('/users/me').expect(401);
+    });
+
+    it('update name only → 200 with updated name', async () => {
+      const user = await createUser(userRepo, { email: 'user@test.com' });
+
+      const res = await request(app.getHttpServer())
+        .put('/users/me')
+        .set('Authorization', `Bearer ${tokenFor(user)}`)
+        .field('name', 'New Name')
+        .expect(200);
+
+      expect((res.body as Record<string, unknown>).name).toBe('New Name');
+    });
+
+    it('update phone only → 200 with updated phone', async () => {
+      const user = await createUser(userRepo, { email: 'user@test.com' });
+
+      const res = await request(app.getHttpServer())
+        .put('/users/me')
+        .set('Authorization', `Bearer ${tokenFor(user)}`)
+        .field('phone', '0912345678')
+        .expect(200);
+
+      const body = res.body as Record<string, unknown>;
+      expect(body.phone).toBe('0912345678');
+    });
+
+    it('invalid phone format → 400', async () => {
+      const user = await createUser(userRepo, { email: 'user@test.com' });
+
+      return request(app.getHttpServer())
+        .put('/users/me')
+        .set('Authorization', `Bearer ${tokenFor(user)}`)
+        .field('phone', 'abc')
+        .expect(400);
+    });
+
+    it('upload avatar image → 200 with avatar field set', async () => {
+      const user = await createUser(userRepo, { email: 'user@test.com' });
+
+      const pngBuffer = Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI6QAAAABJRU5ErkJggg==',
+        'base64',
+      );
+
+      const res = await request(app.getHttpServer())
+        .put('/users/me')
+        .set('Authorization', `Bearer ${tokenFor(user)}`)
+        .attach('file', pngBuffer, {
+          filename: 'avatar.png',
+          contentType: 'image/png',
+        })
+        .expect(200);
+
+      const body = res.body as Record<string, unknown>;
+      expect(body.avatar).toBeTruthy();
+
+      // cleanup uploaded file
+      const uploaded = await userRepo.findOne({ where: { id: user.id } });
+      if (uploaded?.avatar) {
+        const dir = path.join('uploads', 'user');
+        if (fs.existsSync(dir)) {
+          fs.readdirSync(dir)
+            .filter((f) => f.startsWith(uploaded.avatar!))
+            .forEach((f) => fs.unlinkSync(path.join(dir, f)));
+        }
+      }
+    });
+
+    it('file too large → 413', async () => {
+      const user = await createUser(userRepo, { email: 'user@test.com' });
+      const bigBuffer = Buffer.alloc(6 * 1024 * 1024);
+
+      return request(app.getHttpServer())
+        .put('/users/me')
+        .set('Authorization', `Bearer ${tokenFor(user)}`)
+        .attach('file', bigBuffer, {
+          filename: 'big.png',
+          contentType: 'image/png',
+        })
+        .expect(413);
+    });
+
+    it('wrong file type → 422', async () => {
+      const user = await createUser(userRepo, { email: 'user@test.com' });
+      const textBuffer = Buffer.from('not an image');
+
+      return request(app.getHttpServer())
+        .put('/users/me')
+        .set('Authorization', `Bearer ${tokenFor(user)}`)
+        .attach('file', textBuffer, {
+          filename: 'file.txt',
+          contentType: 'text/plain',
+        })
+        .expect(422);
+    });
+  });
+
+  // ─── PUT /users/me/password ──────────────────────────────────────────────────
+
+  describe('PUT /users/me/password — change own password', () => {
+    it('no token → 401', () => {
+      return request(app.getHttpServer())
+        .put('/users/me/password')
+        .send({ currentPassword: DEFAULT_PASSWORD, newPassword: 'NewPass123@' })
+        .expect(401);
+    });
+
+    it('correct current password → 200', async () => {
+      const user = await createUser(userRepo, { email: 'user@test.com' });
+
+      return request(app.getHttpServer())
+        .put('/users/me/password')
+        .set('Authorization', `Bearer ${tokenFor(user)}`)
+        .send({ currentPassword: DEFAULT_PASSWORD, newPassword: 'NewPass123@' })
+        .expect(200);
+    });
+
+    it('wrong current password → 401', async () => {
+      const user = await createUser(userRepo, { email: 'user@test.com' });
+
+      return request(app.getHttpServer())
+        .put('/users/me/password')
+        .set('Authorization', `Bearer ${tokenFor(user)}`)
+        .send({ currentPassword: 'WrongPass1@', newPassword: 'NewPass123@' })
+        .expect(401);
+    });
+
+    it('new password fails complexity rule → 400', async () => {
+      const user = await createUser(userRepo, { email: 'user@test.com' });
+
+      return request(app.getHttpServer())
+        .put('/users/me/password')
+        .set('Authorization', `Bearer ${tokenFor(user)}`)
+        .send({ currentPassword: DEFAULT_PASSWORD, newPassword: 'weak' })
+        .expect(400);
+    });
+
+    it('missing fields → 400', () => {
+      return request(app.getHttpServer()).put('/users/me/password').expect(401);
     });
   });
 });
