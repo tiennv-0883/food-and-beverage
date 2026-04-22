@@ -1,0 +1,7 @@
+{
+  "product-not-found": "Không tìm thấy sản phẩm #{{args.id}}",
+  "product-unavailable": "Sản phẩm #{{args.id}} hiện không khả dụng",
+  "product-out-of-stock": "Sản phẩm #{{args.id}} đã hết hàng",
+  "update-failed": "Cập nhật giỏ hàng thất bại",
+  "clear-failed": "Xóa giỏ hàng thất bại"
+}

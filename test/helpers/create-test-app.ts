@@ -27,6 +27,7 @@ export interface TestAppOptions {
   featureEntities?: EntityTarget<ObjectLiteral>[];
   controllers?: Type[];
   providers?: Provider[];
+  redisProviders?: Provider[];
 }
 
 export interface TestApp {
@@ -56,6 +57,7 @@ export async function createTestApp(
       RolesGuard,
       { provide: I18nService, useValue: mockI18nService },
       ...(options.providers ?? []),
+      ...(options.redisProviders ?? []),
     ],
   }).compile();
 
