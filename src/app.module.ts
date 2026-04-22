@@ -22,6 +22,8 @@ import { ProductSuggestionsModule } from './product-suggestions/product-suggesti
 import { AddressesModule } from './addresses/addresses.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AttachmentsModule } from './attachments/attachments.module';
+import { RedisModule } from './redis/redis.module';
+import { CartModule } from './cart/cart.module';
 import { JwtAuthGuard } from './auth/guards/jwt.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { ConsoleModule } from 'nestjs-console/dist/module';
@@ -77,6 +79,8 @@ import { SeedsModule } from './database/seeds/seeds.module';
     AddressesModule,
     NotificationsModule,
     AttachmentsModule,
+    RedisModule,
+    CartModule,
     ConsoleModule,
     SeedsModule,
   ],

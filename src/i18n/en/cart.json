@@ -1,0 +1,7 @@
+{
+  "product-not-found": "Product #{{args.id}} not found",
+  "product-unavailable": "Product #{{args.id}} is currently unavailable",
+  "product-out-of-stock": "Product #{{args.id}} is out of stock",
+  "update-failed": "Failed to update cart",
+  "clear-failed": "Failed to clear cart"
+}
