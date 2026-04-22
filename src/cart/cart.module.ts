@@ -9,5 +9,6 @@ import { CartController } from './cart.controller';
   imports: [RedisModule, TypeOrmModule.forFeature([Product])],
   providers: [CartService],
   controllers: [CartController],
+  exports: [CartService],
 })
 export class CartModule {}
