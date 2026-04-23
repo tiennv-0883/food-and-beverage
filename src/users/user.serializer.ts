@@ -1,3 +1,5 @@
+import { attachmentUrl } from '../shared/util';
+
 export type UserSerializerType = 'BASIC_INFO' | 'PROFILE';
 
 const USER_FIELDS: Record<UserSerializerType, string[]> = {
@@ -18,7 +20,7 @@ const USER_FIELDS: Record<UserSerializerType, string[]> = {
 type FieldTransform = (value: unknown) => unknown;
 
 const FIELD_TRANSFORMS: Partial<Record<string, FieldTransform>> = {
-  avatar: (v) => (typeof v === 'string' && v ? `/attachments/${v}` : null),
+  avatar: (v) => (typeof v === 'string' ? attachmentUrl(v) : null),
 };
 
 export class UserSerializer {

@@ -1,17 +1,14 @@
+import { attachmentUrl } from '../shared/util';
 import { Product } from './product.entity';
 
 export class ProductSerializer {
-  private static toThumbnailUrl(fileId: string | null): string | null {
-    return fileId ? `/attachments/${fileId}` : null;
-  }
-
   static serializeList(product: Product): Record<string, unknown> {
     return {
       id: product.id,
       name: product.name,
       slug: product.slug,
       price: product.price,
-      thumbnail: ProductSerializer.toThumbnailUrl(product.thumbnail),
+      thumbnail: attachmentUrl(product.thumbnail),
       averageRating: product.averageRating,
       stockQuantity: product.stockQuantity,
       categoryId: product.categoryId,
@@ -26,7 +23,7 @@ export class ProductSerializer {
       slug: product.slug,
       price: product.price,
       description: product.description,
-      thumbnail: ProductSerializer.toThumbnailUrl(product.thumbnail),
+      thumbnail: attachmentUrl(product.thumbnail),
       averageRating: product.averageRating,
       stockQuantity: product.stockQuantity,
       status: product.status,
@@ -42,7 +39,7 @@ export class ProductSerializer {
   }
 
   thumbnail(raw: string | null): string | null {
-    return raw ? `/attachments/${raw}` : null;
+    return attachmentUrl(raw);
   }
 
   price(raw: string | null): number | null {
