@@ -20,6 +20,7 @@ export class AttachmentsController {
   ): Promise<void> {
     const attachment = await this.attachmentsService.findByFileIdOrFail(fileId);
     const absolutePath = path.resolve(process.cwd(), attachment.path!);
+    if (attachment.mimeType) res.type(attachment.mimeType);
     res.sendFile(absolutePath);
   }
 }

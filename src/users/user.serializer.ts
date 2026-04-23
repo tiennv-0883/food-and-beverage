@@ -1,3 +1,5 @@
+import { attachmentUrl } from '../shared/util';
+
 export type UserSerializerType = 'BASIC_INFO' | 'PROFILE';
 
 const USER_FIELDS: Record<UserSerializerType, string[]> = {
@@ -15,6 +17,12 @@ const USER_FIELDS: Record<UserSerializerType, string[]> = {
   ],
 };
 
+type FieldTransform = (value: unknown) => unknown;
+
+const FIELD_TRANSFORMS: Partial<Record<string, FieldTransform>> = {
+  avatar: (v) => (typeof v === 'string' ? attachmentUrl(v) : null),
+};
+
 export class UserSerializer {
   constructor(
     private readonly user: Record<string, unknown>,
@@ -29,7 +37,10 @@ export class UserSerializer {
     return this.allowedFields.reduce(
       (acc, field) => {
         if (this.user[field] !== undefined) {
-          acc[field] = this.user[field];
+          const transform = FIELD_TRANSFORMS[field];
+          acc[field] = transform
+            ? transform(this.user[field])
+            : this.user[field];
         }
         return acc;
       },

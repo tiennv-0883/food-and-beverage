@@ -42,6 +42,17 @@ export async function executeOrThrow<T>(
   }
 }
 
+export function attachmentUrl(
+  fileId: string | null | undefined,
+): string | null {
+  if (!fileId) return null;
+  const base = (process.env.APP_URL ?? 'http://localhost:3000').replace(
+    /\/+$/,
+    '',
+  );
+  return `${base}/attachments/${fileId}`;
+}
+
 export function t(
   i18n: I18nService,
   key: string,

@@ -1,3 +1,4 @@
+import { attachmentUrl } from '../shared/util';
 import { Product } from './product.entity';
 
 export class ProductSerializer {
@@ -7,7 +8,7 @@ export class ProductSerializer {
       name: product.name,
       slug: product.slug,
       price: product.price,
-      thumbnail: product.thumbnail,
+      thumbnail: attachmentUrl(product.thumbnail),
       averageRating: product.averageRating,
       stockQuantity: product.stockQuantity,
       categoryId: product.categoryId,
@@ -22,7 +23,7 @@ export class ProductSerializer {
       slug: product.slug,
       price: product.price,
       description: product.description,
-      thumbnail: product.thumbnail,
+      thumbnail: attachmentUrl(product.thumbnail),
       averageRating: product.averageRating,
       stockQuantity: product.stockQuantity,
       status: product.status,
@@ -35,6 +36,10 @@ export class ProductSerializer {
           }
         : null,
     };
+  }
+
+  thumbnail(raw: string | null): string | null {
+    return attachmentUrl(raw);
   }
 
   price(raw: string | null): number | null {

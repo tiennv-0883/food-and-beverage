@@ -1,6 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import * as fs from 'fs';
+import {
+  ConflictException,
+  HttpException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { I18nService } from 'nestjs-i18n';
 import { OrderItem } from '../orders/order-item.entity';
@@ -13,9 +21,23 @@ import {
   SearchProductsQueryDto,
   ProductSort,
 } from './dto/search-products-query.dto';
+import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 import { Product } from './product.entity';
 import { ProductSerializer } from './product.serializer';
-import { executeOrThrow, t } from '../shared/util';
+import { AttachmentsService } from '../attachments/attachments.service';
+import { AttachableType } from '../attachments/attachment.entity';
+import { executeOrThrow, t, withTransaction } from '../shared/util';
+
+function toSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
 
 const LABELS: Record<Timeframe, string> = {
   [Timeframe.DAY]: 'Món ngon hôm nay',
@@ -40,12 +62,16 @@ function getSinceDate(timeframe: Timeframe): Date {
 
 @Injectable()
 export class ProductsService {
+  private readonly logger = new Logger(ProductsService.name);
+
   constructor(
     @InjectRepository(OrderItem)
     private readonly orderItemRepo: Repository<OrderItem>,
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>,
     private readonly configService: ConfigService,
+    private readonly attachmentsService: AttachmentsService,
+    private readonly dataSource: DataSource,
     private readonly i18n: I18nService,
   ) {}
 
@@ -202,5 +228,157 @@ export class ProductsService {
     }
 
     return ProductSerializer.serializeDetail(product);
+  }
+
+  async createProduct(
+    dto: CreateProductDto,
+    file?: Express.Multer.File,
+  ): Promise<Record<string, unknown>> {
+    const slug = dto.slug ?? toSlug(dto.name);
+
+    const existing = await this.productRepo.findOne({ where: { slug } });
+    if (existing) {
+      throw new ConflictException(t(this.i18n, 'product.slug-taken'));
+    }
+
+    const newAttachment = file
+      ? this.attachmentsService.prepareAttachment(
+          file,
+          AttachableType.PRODUCT,
+          'pending',
+        )
+      : null;
+
+    let createdId: string;
+
+    try {
+      await withTransaction(
+        this.dataSource,
+        async (manager) => {
+          const product = await manager.save(Product, {
+            name: dto.name,
+            slug,
+            price: dto.price,
+            stockQuantity: dto.stockQuantity,
+            averageRating: 0,
+            description: dto.description ?? null,
+            categoryId: dto.categoryId ?? null,
+            status: dto.status ?? 1,
+            thumbnail: newAttachment?.fileId ?? null,
+          });
+
+          if (newAttachment) {
+            newAttachment.attachableId = product.id;
+            await this.attachmentsService.saveAttachment(
+              newAttachment,
+              manager,
+            );
+          }
+
+          createdId = product.id;
+        },
+        {
+          afterRollback: () => {
+            if (newAttachment?.path && fs.existsSync(newAttachment.path)) {
+              fs.unlinkSync(newAttachment.path);
+            }
+          },
+        },
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      this.logger.error('createProduct failed', err);
+      throw new InternalServerErrorException(
+        t(this.i18n, 'product.create-failed'),
+      );
+    }
+
+    return this.findOne(createdId!);
+  }
+
+  async updateProduct(
+    id: string,
+    dto: UpdateProductDto,
+    file?: Express.Multer.File,
+  ): Promise<Record<string, unknown>> {
+    const product = await this.productRepo.findOne({ where: { id } });
+    if (!product) {
+      throw new NotFoundException(t(this.i18n, 'product.not-found', { id }));
+    }
+
+    if (dto.slug && dto.slug !== product.slug) {
+      const taken = await this.productRepo.findOne({
+        where: { slug: dto.slug },
+      });
+      if (taken) {
+        throw new ConflictException(t(this.i18n, 'product.slug-taken'));
+      }
+    }
+
+    const newAttachment = file
+      ? this.attachmentsService.prepareAttachment(
+          file,
+          AttachableType.PRODUCT,
+          id,
+        )
+      : null;
+
+    const oldAttachment = file
+      ? await this.attachmentsService.findByAttachable(
+          AttachableType.PRODUCT,
+          id,
+        )
+      : null;
+
+    try {
+      await withTransaction(
+        this.dataSource,
+        async (manager) => {
+          const update = Object.fromEntries(
+            Object.entries(dto).filter(([k]) => k !== 'file'),
+          ) as Partial<Product>;
+          if (newAttachment) {
+            update.thumbnail = newAttachment.fileId;
+            await this.attachmentsService.saveAttachment(
+              newAttachment,
+              manager,
+            );
+          }
+          await manager.update(Product, id, update);
+        },
+        {
+          afterRollback: () => {
+            if (newAttachment?.path && fs.existsSync(newAttachment.path)) {
+              fs.unlinkSync(newAttachment.path);
+            }
+          },
+          afterCommit: async () => {
+            if (oldAttachment) {
+              await this.attachmentsService.removeById(oldAttachment.id);
+            }
+          },
+        },
+      );
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      this.logger.error('updateProduct failed', err);
+      throw new InternalServerErrorException(
+        t(this.i18n, 'product.update-failed'),
+      );
+    }
+
+    return this.findOne(id);
+  }
+
+  async deleteProduct(id: string): Promise<void> {
+    const product = await this.productRepo.findOne({ where: { id } });
+    if (!product) {
+      throw new NotFoundException(t(this.i18n, 'product.not-found', { id }));
+    }
+
+    await executeOrThrow(
+      () => this.productRepo.softDelete(id),
+      t(this.i18n, 'product.delete-failed'),
+    );
   }
 }

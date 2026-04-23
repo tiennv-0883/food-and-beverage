@@ -22,9 +22,8 @@ export class AttachmentsService {
     attachableId: string,
   ): Attachment {
     const fileId = crypto.randomUUID();
-    const ext = path.extname(file.originalname).toLowerCase() || '.bin';
-    const dir = path.join('uploads', attachableType.toLowerCase());
-    const filePath = path.join(dir, `${fileId}${ext}`);
+    const dir = path.join('uploads');
+    const filePath = path.join(dir, fileId);
 
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(filePath, file.buffer);

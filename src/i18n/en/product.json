@@ -1,4 +1,8 @@
 {
   "not-found": "Product #{{args.id}} not found",
-  "fetch-failed": "Failed to fetch products"
+  "fetch-failed": "Failed to fetch products",
+  "slug-taken": "A product with this slug already exists",
+  "create-failed": "Failed to create product",
+  "update-failed": "Failed to update product",
+  "delete-failed": "Failed to delete product"
 }
