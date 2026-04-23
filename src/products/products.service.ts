@@ -190,9 +190,10 @@ export class ProductsService {
   }
 
   async findOne(id: string) {
+    const where = /^\d+$/.test(id) ? { id } : { slug: id };
+
     const product = await executeOrThrow(
-      () =>
-        this.productRepo.findOne({ where: { id }, relations: ['category'] }),
+      () => this.productRepo.findOne({ where, relations: ['category'] }),
       t(this.i18n, 'product.fetch-failed'),
     );
 
