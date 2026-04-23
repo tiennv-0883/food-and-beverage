@@ -28,6 +28,16 @@ export class ProductsController {
     return this.productsService.getFeatured(query);
   }
 
+  @ApiOperation({
+    summary: 'Lấy link chia sẻ sản phẩm lên mạng xã hội (public)',
+  })
+  @ApiOkResponse({ description: 'URL chia sẻ kèm Open Graph metadata' })
+  @Public()
+  @Get(':slug/share')
+  getShareLink(@Param('slug') slug: string) {
+    return this.productsService.getShareLink(slug);
+  }
+
   @ApiOperation({ summary: 'Xem chi tiết sản phẩm (public)' })
   @ApiOkResponse({ description: 'Thông tin chi tiết sản phẩm' })
   @Public()
