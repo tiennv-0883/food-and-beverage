@@ -5,5 +5,6 @@
   "not-cancellable": "Đơn hàng không thể hủy (trạng thái hiện tại: {{args.status}})",
   "place-failed": "Đặt hàng thất bại",
   "cancel-failed": "Hủy đơn hàng thất bại",
-  "fetch-failed": "Lấy danh sách đơn hàng thất bại"
+  "fetch-failed": "Lấy danh sách đơn hàng thất bại",
+  "insufficient-stock": "Một hoặc nhiều sản phẩm không đủ số lượng tồn kho để thực hiện đơn hàng"
 }

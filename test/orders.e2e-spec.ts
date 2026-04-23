@@ -162,6 +162,25 @@ describe('OrdersController Integration (e2e)', () => {
 
       // giỏ hàng đã được xóa
       expect(mockRedis.del).toHaveBeenCalledWith(`cart:${user.id}`);
+
+      // tồn kho bị trừ
+      const updated = await productRepo.findOneBy({ id: product.id });
+      expect(updated?.stockQuantity).toBe(8);
+    });
+
+    it('số lượng trong giỏ vượt tồn kho → 422', async () => {
+      const user = await createUser(userRepo);
+      const product = await createProduct(productRepo, {
+        status: 1,
+        stockQuantity: 1,
+      });
+      seedCart(user.id, [{ productId: product.id, quantity: 2 }]);
+
+      return request(app.getHttpServer())
+        .post('/orders')
+        .set('Authorization', `Bearer ${tokenFor(user)}`)
+        .send({ shippingAddress: 'Test', phone: '0901234567' })
+        .expect(422);
     });
 
     it('note là optional → 201', async () => {
@@ -312,13 +331,13 @@ describe('OrdersController Integration (e2e)', () => {
         .expect(401);
     });
 
-    it('hủy đơn PENDING → 200, status = CANCELLED', async () => {
+    it('hủy đơn PENDING → 200, status = CANCELLED, tồn kho được hoàn trả', async () => {
       const user = await createUser(userRepo);
-      const product = await createProduct(productRepo);
+      const product = await createProduct(productRepo, { stockQuantity: 5 });
       const order = await createOrder(orderRepo, user.id, {
         status: OrderStatus.PENDING,
       });
-      await createOrderItem(orderItemRepo, order.id, product.id);
+      await createOrderItem(orderItemRepo, order.id, product.id, { quantity: 3 });
 
       const res = await request(app.getHttpServer())
         .patch(`/orders/${order.id}/cancel`)
@@ -329,6 +348,10 @@ describe('OrdersController Integration (e2e)', () => {
       const body = res.body as Record<string, unknown>;
       expect(body.status).toBe(OrderStatus.CANCELLED);
       expect(body.cancelReason).toBe('Đổi địa chỉ');
+
+      // tồn kho được hoàn trả
+      const updated = await productRepo.findOneBy({ id: product.id });
+      expect(updated?.stockQuantity).toBe(8);
     });
 
     it('hủy đơn CONFIRMED → 422', async () => {

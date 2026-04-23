@@ -48,6 +48,15 @@ export class OrdersService {
     const products = await this.productRepo.findBy({ id: In(productIds) });
     const productMap = new Map(products.map((p) => [p.id, p]));
 
+    for (const item of cartData.items) {
+      const product = productMap.get(item.productId);
+      if (!product || (product.stockQuantity ?? 0) < item.quantity) {
+        throw new UnprocessableEntityException(
+          t(this.i18n, 'order.insufficient-stock'),
+        );
+      }
+    }
+
     const totalPrice = cartData.items.reduce((sum, item) => {
       const product = productMap.get(item.productId);
       return sum + (product?.price ?? 0) * item.quantity;
@@ -55,42 +64,49 @@ export class OrdersService {
 
     let createdOrderId: string;
 
-    await withTransaction(
-      this.dataSource,
-      async (manager) => {
-        const order = await executeOrThrow(
-          () =>
-            manager.save(Order, {
+    await executeOrThrow(
+      () =>
+        withTransaction(
+          this.dataSource,
+          async (manager) => {
+            const order = await manager.save(Order, {
               userId,
               totalPrice: Number(totalPrice.toFixed(2)),
               status: OrderStatus.PENDING,
               shippingAddress: dto.shippingAddress,
               phone: dto.phone,
               note: dto.note ?? null,
-            }),
-          t(this.i18n, 'order.place-failed'),
-        );
+            });
 
-        const items = cartData.items.map((cartItem) => {
-          const product = productMap.get(cartItem.productId);
-          return manager.create(OrderItem, {
-            orderId: order.id,
-            productId: cartItem.productId,
-            quantity: cartItem.quantity,
-            priceAtPurchase: product?.price ?? 0,
-          });
-        });
+            const items = cartData.items.map((cartItem) => {
+              const product = productMap.get(cartItem.productId);
+              return manager.create(OrderItem, {
+                orderId: order.id,
+                productId: cartItem.productId,
+                quantity: cartItem.quantity,
+                priceAtPurchase: product?.price ?? 0,
+              });
+            });
 
-        await executeOrThrow(
-          () => manager.save(OrderItem, items),
-          t(this.i18n, 'order.place-failed'),
-        );
+            await manager.save(OrderItem, items);
 
-        createdOrderId = order.id;
-      },
-      {
-        afterCommit: () => this.cartService.clearCart(userId),
-      },
+            for (const cartItem of cartData.items) {
+              const product = productMap.get(cartItem.productId)!;
+              await manager.decrement(
+                Product,
+                { id: product.id },
+                'stockQuantity',
+                cartItem.quantity,
+              );
+            }
+
+            createdOrderId = order.id;
+          },
+          {
+            afterCommit: () => this.cartService.clearCart(userId),
+          },
+        ),
+      t(this.i18n, 'order.place-failed'),
     );
 
     return this.findOne(createdOrderId!, userId);
@@ -153,7 +169,10 @@ export class OrdersService {
     userId: string,
     dto: CancelOrderDto,
   ): Promise<Record<string, unknown>> {
-    const order = await this.orderRepo.findOne({ where: { id } });
+    const order = await this.orderRepo.findOne({
+      where: { id },
+      relations: ['orderItems'],
+    });
 
     if (!order) {
       throw new NotFoundException(t(this.i18n, 'order.not-found', { id }));
@@ -169,9 +188,20 @@ export class OrdersService {
 
     await executeOrThrow(
       () =>
-        this.orderRepo.update(id, {
-          status: OrderStatus.CANCELLED,
-          cancelReason: dto.reason ?? null,
+        withTransaction(this.dataSource, async (manager) => {
+          await manager.update(Order, id, {
+            status: OrderStatus.CANCELLED,
+            cancelReason: dto.reason ?? null,
+          });
+
+          for (const item of order.orderItems ?? []) {
+            await manager.increment(
+              Product,
+              { id: item.productId },
+              'stockQuantity',
+              item.quantity ?? 0,
+            );
+          }
         }),
       t(this.i18n, 'order.cancel-failed'),
     );
