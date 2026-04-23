@@ -1,4 +1,8 @@
 {
   "not-found": "Không tìm thấy sản phẩm #{{args.id}}",
-  "fetch-failed": "Lấy danh sách sản phẩm thất bại"
+  "fetch-failed": "Lấy danh sách sản phẩm thất bại",
+  "slug-taken": "Đã tồn tại sản phẩm với slug này",
+  "create-failed": "Tạo sản phẩm thất bại",
+  "update-failed": "Cập nhật sản phẩm thất bại",
+  "delete-failed": "Xóa sản phẩm thất bại"
 }
