@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import { I18nService } from 'nestjs-i18n';
 import { OrderItem } from '../orders/order-item.entity';
 import { OrderStatus } from '../orders/enums/order-status.enum';
@@ -44,6 +45,7 @@ export class ProductsService {
     private readonly orderItemRepo: Repository<OrderItem>,
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>,
+    private readonly configService: ConfigService,
     private readonly i18n: I18nService,
   ) {}
 
@@ -157,10 +159,41 @@ export class ProductsService {
     };
   }
 
+  async getShareLink(slug: string): Promise<Record<string, unknown>> {
+    const product = await this.productRepo.findOne({
+      where: { slug },
+      relations: ['category'],
+    });
+
+    if (!product) {
+      throw new NotFoundException(
+        t(this.i18n, 'product.not-found', { id: slug }),
+      );
+    }
+
+    const appUrl =
+      this.configService.get<string>('APP_URL') ?? 'http://localhost:3000';
+    const url = `${appUrl}/products/${product.slug}`;
+
+    return {
+      url,
+      title: product.name,
+      description: product.description,
+      thumbnail: product.thumbnail,
+      og: {
+        title: product.name,
+        description: product.description,
+        image: product.thumbnail,
+        url,
+      },
+    };
+  }
+
   async findOne(id: string) {
+    const where = /^\d+$/.test(id) ? { id } : { slug: id };
+
     const product = await executeOrThrow(
-      () =>
-        this.productRepo.findOne({ where: { id }, relations: ['category'] }),
+      () => this.productRepo.findOne({ where, relations: ['category'] }),
       t(this.i18n, 'product.fetch-failed'),
     );
 
