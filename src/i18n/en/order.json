@@ -1,0 +1,10 @@
+{
+  "empty-cart": "Your cart is empty",
+  "not-found": "Order #{{args.id}} not found",
+  "forbidden": "You do not have access to this order",
+  "not-cancellable": "Order cannot be cancelled (current status: {{args.status}})",
+  "place-failed": "Failed to place order",
+  "cancel-failed": "Failed to cancel order",
+  "fetch-failed": "Failed to fetch orders",
+  "insufficient-stock": "One or more products do not have enough stock to fulfill your order"
+}
