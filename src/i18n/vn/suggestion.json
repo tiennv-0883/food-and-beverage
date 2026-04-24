@@ -1,0 +1,6 @@
+{
+  "not-found": "Không tìm thấy đề xuất #{id}",
+  "fetch-failed": "Không thể lấy danh sách đề xuất",
+  "create-failed": "Không thể tạo đề xuất",
+  "update-failed": "Không thể cập nhật trạng thái đề xuất"
+}

@@ -1,0 +1,6 @@
+{
+  "not-found": "Suggestion #{id} not found",
+  "fetch-failed": "Failed to fetch suggestions",
+  "create-failed": "Failed to create suggestion",
+  "update-failed": "Failed to update suggestion status"
+}
