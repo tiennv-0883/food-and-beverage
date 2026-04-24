@@ -12,6 +12,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import * as path from 'path';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
+import { ScheduleModule } from '@nestjs/schedule';
+import { ReportsModule } from './reports/reports.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { CategoriesModule } from './categories/categories.module';
@@ -83,6 +85,8 @@ import { SeedsModule } from './database/seeds/seeds.module';
     CartModule,
     ConsoleModule,
     SeedsModule,
+    ScheduleModule.forRoot(),
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [
